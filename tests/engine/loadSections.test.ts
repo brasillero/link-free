@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -72,5 +72,11 @@ describe("loadSections", () => {
     await expect(loadSections(dir)).rejects.toThrow(
       /link\.header\.json → blocks\[0\]: component "link" not allowed here \(valid: profile, socials\)/,
     );
+  });
+
+  it("propagates unexpected read errors instead of treating them as missing files", async () => {
+    // A directory named link.body.json triggers EISDIR (or EPERM on Windows) — not ENOENT.
+    await mkdir(join(dir, "link.body.json"));
+    await expect(loadSections(dir)).rejects.not.toThrow(/no link\.\*\.json files found/);
   });
 });

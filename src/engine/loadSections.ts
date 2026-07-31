@@ -26,8 +26,9 @@ async function readJsonFile(path: string): Promise<unknown | null> {
   let raw: string;
   try {
     raw = await readFile(path, "utf8");
-  } catch {
-    return null; // missing file → section omitted
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null; // missing file → section omitted
+    throw err; // unexpected I/O error — let it surface as-is
   }
   try {
     return JSON.parse(raw);
@@ -44,7 +45,7 @@ function validateBlocks(raw: unknown, section: SectionName): ValidatedBlock[] {
   }
   return wrapper.data.blocks.map((block, i) => {
     const component = block.component;
-    if (typeof component !== "string" || !(component in registry)) {
+    if (typeof component !== "string" || !Object.hasOwn(registry, component)) {
       throw new LoadError(
         `${fileName} → blocks[${i}]: unknown component "${String(component)}" (valid: ${COMPONENT_NAMES.join(", ")})`,
       );
