@@ -100,6 +100,10 @@ Every section file is an object with a `blocks` array. Each block declares its `
 
 Zod schemas **strip** unknown keys, so config files written against future versions still build with older CLIs (unknown keys ignored, not errors).
 
+### 4.7 URL validation
+
+URL fields use zod's `.url()` (anything `new URL()` accepts). Schemes are intentionally **not** restricted to http(s): configs are authored by the page owner (no untrusted input), and `mailto:`/`tel:` links are legitimate for a link-in-bio page. HTML-escaping still applies to all rendered attribute values.
+
 ## 5. Architecture
 
 Single Node ESM package, TypeScript, bundled with tsup. One-way data flow: **discover → validate → render → write**.
