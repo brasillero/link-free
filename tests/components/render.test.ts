@@ -49,6 +49,15 @@ describe("renderSocials", () => {
     expect(html).toContain('aria-label="GitHub"');
     expect(html).toContain("<svg");
   });
+
+  it("escapes label and url", () => {
+    const html = renderSocials({
+      component: "socials",
+      links: [{ icon: "website", url: "https://a.dev/?x=1&y=2", label: 'My "Site"' }],
+    });
+    expect(html).toContain('aria-label="My &quot;Site&quot;"');
+    expect(html).toContain("x=1&amp;y=2");
+  });
 });
 
 describe("renderLink", () => {
