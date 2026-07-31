@@ -1168,17 +1168,17 @@ function findProp(blocks: ValidatedBlock[] | null, component: string, prop: stri
   return typeof value === "string" ? value : undefined;
 }
 
-function wrapSection(tag: string, blocks: ValidatedBlock[] | null, inner = ""): string | null {
+function wrapSection(tag: string, blocks: ValidatedBlock[] | null): string | null {
   if (!blocks || blocks.length === 0) return null;
   const body = blocks.map(renderBlock).join("\n  ");
-  return `<${tag}>${inner}\n  ${body}\n${inner}</${tag}>`;
+  return `<${tag}>\n  ${body}\n</${tag}>`;
 }
 
 export function renderPage(sections: Sections): string {
   const { site, header, body, footer } = sections;
 
-  const title = site.title ?? findProp(header, "profile", "name") ?? "Links";
-  const description = site.description ?? findProp(header, "profile", "bio");
+  const title = site.title || findProp(header, "profile", "name") || "Links";
+  const description = site.description || findProp(header, "profile", "bio");
 
   const meta: string[] = [
     '  <meta charset="utf-8">',
@@ -1207,9 +1207,9 @@ export function renderPage(sections: Sections): string {
     ...meta,
     "</head>",
     "<body>",
-    wrapSection("header", header, "  "),
+    wrapSection("header", header),
     bodyHtml,
-    wrapSection("footer", footer, "  "),
+    wrapSection("footer", footer),
     "</body>",
     "</html>",
   ];
@@ -1221,7 +1221,7 @@ export function renderPage(sections: Sections): string {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm vitest run tests/engine/renderPage.test.ts`
-Expected: PASS (5 tests)
+Expected: PASS (9 tests — 5 original + 4 added in review: empty-array omission, empty-string title fallback, page-level escaping, bio description fallback + og:description)
 
 - [ ] **Step 5: Commit**
 
@@ -1484,7 +1484,7 @@ git commit -m "docs: runnable example config + CLI smoke verified"
 - [ ] **Step 1: Full clean run**
 
 Run: `rm -rf node_modules dist && pnpm install && pnpm test && pnpm typecheck && pnpm build`
-Expected: install clean, all 43 tests PASS, no type errors, bundle emitted.
+Expected: install clean, all 48 tests PASS, no type errors, bundle emitted.
 
 - [ ] **Step 2: Confirm output contract against spec**
 
