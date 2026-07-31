@@ -66,4 +66,34 @@ describe("renderPage", () => {
     const html = renderPage({ ...full, site: { lang: "pt-BR" } });
     expect(html).toContain('<html lang="pt-BR">');
   });
+
+  it("omits sections with an empty blocks array", () => {
+    const html = renderPage({ site: {}, header: [], body: [], footer: [] });
+    expect(html).not.toContain("<header>");
+    expect(html).not.toContain("<main>");
+    expect(html).not.toContain("<footer>");
+  });
+
+  it("falls back when site.title is an empty string", () => {
+    const html = renderPage({ ...full, site: { title: "" }, body: null, footer: null });
+    expect(html).toContain("<title>Jane</title>");
+  });
+
+  it("escapes page-level title and description", () => {
+    const html = renderPage({
+      ...full,
+      site: { title: '<script>alert(1)</script>', description: 'a"b' },
+      header: null,
+      body: null,
+      footer: null,
+    });
+    expect(html).toContain("<title>&lt;script&gt;alert(1)&lt;/script&gt;</title>");
+    expect(html).toContain('<meta name="description" content="a&quot;b">');
+  });
+
+  it("falls back to profile bio for description and emits og:description", () => {
+    const html = renderPage({ ...full, site: {}, body: null, footer: null });
+    expect(html).toContain('<meta name="description" content="dev">');
+    expect(html).toContain('<meta property="og:description" content="dev">');
+  });
 });

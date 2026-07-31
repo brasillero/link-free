@@ -8,17 +8,17 @@ function findProp(blocks: ValidatedBlock[] | null, component: string, prop: stri
   return typeof value === "string" ? value : undefined;
 }
 
-function wrapSection(tag: string, blocks: ValidatedBlock[] | null, inner = ""): string | null {
+function wrapSection(tag: string, blocks: ValidatedBlock[] | null): string | null {
   if (!blocks || blocks.length === 0) return null;
   const body = blocks.map(renderBlock).join("\n  ");
-  return `<${tag}>${inner}\n  ${body}\n${inner}</${tag}>`;
+  return `<${tag}>\n  ${body}\n</${tag}>`;
 }
 
 export function renderPage(sections: Sections): string {
   const { site, header, body, footer } = sections;
 
-  const title = site.title ?? findProp(header, "profile", "name") ?? "Links";
-  const description = site.description ?? findProp(header, "profile", "bio");
+  const title = site.title || findProp(header, "profile", "name") || "Links";
+  const description = site.description || findProp(header, "profile", "bio");
 
   const meta: string[] = [
     '  <meta charset="utf-8">',
@@ -47,9 +47,9 @@ export function renderPage(sections: Sections): string {
     ...meta,
     "</head>",
     "<body>",
-    wrapSection("header", header, "  "),
+    wrapSection("header", header),
     bodyHtml,
-    wrapSection("footer", footer, "  "),
+    wrapSection("footer", footer),
     "</body>",
     "</html>",
   ];
