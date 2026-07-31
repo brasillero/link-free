@@ -6,14 +6,22 @@ import { LoadError } from "./engine/loadSections.js";
 const USAGE = "Usage: link-free build [--dir <path>] [--out <path>]";
 
 async function main(): Promise<void> {
-  const { values, positionals } = parseArgs({
-    allowPositionals: true,
-    options: {
-      dir: { type: "string", default: "." },
-      out: { type: "string", default: "dist" },
-      help: { type: "boolean", short: "h", default: false },
-    },
-  });
+  let values: { dir: string; out: string; help: boolean };
+  let positionals: string[];
+  try {
+    ({ values, positionals } = parseArgs({
+      allowPositionals: true,
+      options: {
+        dir: { type: "string", default: "." },
+        out: { type: "string", default: "dist" },
+        help: { type: "boolean", short: "h", default: false },
+      },
+    }));
+  } catch (err) {
+    console.error(`error: ${(err as Error).message}`);
+    console.error(USAGE);
+    process.exit(1);
+  }
 
   const command = positionals[0];
 
@@ -21,7 +29,7 @@ async function main(): Promise<void> {
     console.log(USAGE);
     return;
   }
-  if (command !== "build") {
+  if (command !== "build" || positionals.length > 1) {
     console.error(USAGE);
     process.exit(1);
   }
@@ -30,11 +38,7 @@ async function main(): Promise<void> {
     const outPath = await build(resolve(values.dir), resolve(values.out));
     console.log(`built ${outPath}`);
   } catch (err) {
-    if (err instanceof LoadError) {
-      console.error(`error: ${err.message}`);
-    } else {
-      console.error(err);
-    }
+    console.error(`error: ${(err as Error).message}`);
     process.exit(1);
   }
 }
