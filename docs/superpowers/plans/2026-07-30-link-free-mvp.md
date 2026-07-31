@@ -931,6 +931,15 @@ describe("loadSections", () => {
     await write("link.site.json", { title: "Jane", canonicalUrl: "bad" });
     await expect(loadSections(dir)).rejects.toThrow(LoadError);
   });
+
+  it("rejects a component that is not allowed in that section", async () => {
+    await write("link.header.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+    await expect(loadSections(dir)).rejects.toThrow(
+      /link\.header\.json → blocks\[0\]: component "link" not allowed here \(valid: profile, socials\)/,
+    );
+  });
 });
 ```
 
@@ -953,6 +962,13 @@ export class LoadError extends Error {}
 const SECTION_NAMES = ["header", "body", "footer"] as const;
 type SectionName = (typeof SECTION_NAMES)[number];
 
+/** Which components each section file accepts (spec §4.7). */
+const SECTION_COMPONENTS: Record<SectionName, string[]> = {
+  header: ["profile", "socials"],
+  body: ["link"],
+  footer: ["text"],
+};
+
 export interface Sections {
   site: SiteFile;
   header: ValidatedBlock[] | null;
@@ -974,7 +990,8 @@ async function readJsonFile(path: string): Promise<unknown | null> {
   }
 }
 
-function validateBlocks(raw: unknown, fileName: string): ValidatedBlock[] {
+function validateBlocks(raw: unknown, section: SectionName): ValidatedBlock[] {
+  const fileName = `link.${section}.json`;
   const wrapper = sectionFileSchema.safeParse(raw);
   if (!wrapper.success) {
     throw new LoadError(`${fileName}: expected an object with a "blocks" array`);
@@ -984,6 +1001,11 @@ function validateBlocks(raw: unknown, fileName: string): ValidatedBlock[] {
     if (typeof component !== "string" || !(component in registry)) {
       throw new LoadError(
         `${fileName} → blocks[${i}]: unknown component "${String(component)}" (valid: ${COMPONENT_NAMES.join(", ")})`,
+      );
+    }
+    if (!SECTION_COMPONENTS[section].includes(component)) {
+      throw new LoadError(
+        `${fileName} → blocks[${i}]: component "${component}" not allowed here (valid: ${SECTION_COMPONENTS[section].join(", ")})`,
       );
     }
     const result = registry[component].schema.safeParse(block);
@@ -1006,10 +1028,9 @@ export async function loadSections(dir: string): Promise<Sections> {
     footer: null,
   };
   for (const name of SECTION_NAMES) {
-    const fileName = `link.${name}.json`;
-    const raw = await readJsonFile(join(dir, fileName));
+    const raw = await readJsonFile(join(dir, `link.${name}.json`));
     if (raw != null) {
-      sections[name] = validateBlocks(raw, fileName);
+      sections[name] = validateBlocks(raw, name);
     }
   }
 
@@ -1036,7 +1057,7 @@ export async function loadSections(dir: string): Promise<Sections> {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm vitest run tests/engine/loadSections.test.ts`
-Expected: PASS (7 tests)
+Expected: PASS (8 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -1463,7 +1484,7 @@ git commit -m "docs: runnable example config + CLI smoke verified"
 - [ ] **Step 1: Full clean run**
 
 Run: `rm -rf node_modules dist && pnpm install && pnpm test && pnpm typecheck && pnpm build`
-Expected: install clean, all 41 tests PASS, no type errors, bundle emitted.
+Expected: install clean, all 43 tests PASS, no type errors, bundle emitted.
 
 - [ ] **Step 2: Confirm output contract against spec**
 
