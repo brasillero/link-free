@@ -1,7 +1,6 @@
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { build } from "./engine/build.js";
-import { LoadError } from "./engine/loadSections.js";
 
 const USAGE = "Usage: link-free build [--dir <path>] [--out <path>]";
 
