@@ -35,4 +35,14 @@ describe("themeConfigSchema", () => {
   it("rejects an empty color token", () => {
     expect(() => themeConfigSchema.parse({ tokens: { accent: "" } })).toThrow();
   });
+
+  it("rejects a color token containing '<'", () => {
+    expect(() => themeConfigSchema.parse({ tokens: { accent: "red}</style>" } })).toThrow();
+  });
+
+  it("rejects a backgroundImage containing '<'", () => {
+    expect(() =>
+      themeConfigSchema.parse({ tokens: { backgroundImage: "https://example.com/</style>" } }),
+    ).toThrow();
+  });
 });

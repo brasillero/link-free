@@ -44,11 +44,11 @@ describe("resolveTheme", () => {
     expect(theme.extraCss).toContain("text-decoration:underline");
   });
 
-  it("css-escapes a quote in backgroundImage defensively", () => {
+  it("css-escapes quotes and backslashes in backgroundImage defensively", () => {
     const theme = resolveTheme({
       theme: "light",
-      tokens: { backgroundImage: "https://example.com/a%22b.jpg" },
+      tokens: { backgroundImage: 'https://example.com/a"b.jpg' },
     });
-    expect(theme.rootCss).not.toContain('url("https://example.com/a"b.jpg")');
+    expect(theme.rootCss).toContain('--lf-bg-image: url("https://example.com/a\\"b.jpg");');
   });
 });

@@ -18,7 +18,7 @@ export const sectionFileSchema = z.object({
   blocks: z.array(z.record(z.unknown())),
 });
 
-const colorToken = z.string().min(1);
+const colorToken = z.string().min(1).regex(/^[^<]+$/, "must not contain '<'");
 const radiusToken = z.enum(["sm", "md", "lg", "full"]);
 
 // The enum errorMap emits a curated "unknown theme" message listing the valid
@@ -37,7 +37,7 @@ export const themeConfigSchema = z
       .object({
         accent: colorToken.optional(),
         background: colorToken.optional(),
-        backgroundImage: z.string().url().optional(),
+        backgroundImage: z.string().url().regex(/^[^<]+$/, "must not contain '<'").optional(),
         surface: colorToken.optional(),
         text: colorToken.optional(),
         font: z.enum(["system", "serif", "mono"]).optional(),
