@@ -79,4 +79,31 @@ describe("loadSections", () => {
     await mkdir(join(dir, "link.body.json"));
     await expect(loadSections(dir)).rejects.not.toThrow(/no link\.\*\.json files found/);
   });
+
+  it("returns the default theme when link.free.config.json is absent", async () => {
+    await write("link.body.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+    const sections = await loadSections(dir);
+    expect(sections.theme).toEqual({ theme: "light" });
+  });
+
+  it("loads and validates link.free.config.json", async () => {
+    await write("link.free.config.json", { theme: "dark", tokens: { accent: "#fff" } });
+    const sections = await loadSections(dir);
+    expect(sections.theme.theme).toBe("dark");
+    expect(sections.theme.tokens?.accent).toBe("#fff");
+  });
+
+  it("rejects an unknown preset, listing valid themes", async () => {
+    await write("link.free.config.json", { theme: "dracula" });
+    await expect(loadSections(dir)).rejects.toThrow(
+      /link\.free\.config\.json → theme: unknown theme "dracula" \(valid: light, dark, minimal\)/,
+    );
+  });
+
+  it("rejects a bad token with a zod issue path", async () => {
+    await write("link.free.config.json", { tokens: { radius: "huge" } });
+    await expect(loadSections(dir)).rejects.toThrow(/link\.free\.config\.json → tokens\.radius/);
+  });
 });
