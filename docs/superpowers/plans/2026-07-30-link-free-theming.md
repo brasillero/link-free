@@ -883,7 +883,7 @@ export function renderPage(sections: Sections): string {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test && pnpm typecheck`
-Expected: full suite PASS (69 tests), typecheck clean.
+Expected: full suite PASS (71 tests), typecheck clean.
 
 - [ ] **Step 5: Commit**
 
@@ -938,7 +938,7 @@ self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.
 - [ ] **Step 3: Full clean verification**
 
 Run: `rm -rf node_modules dist example/dist && pnpm install && pnpm test && pnpm typecheck && pnpm build`
-Expected: install clean, 69/69 tests PASS, no type errors, `dist/cli.js` emitted.
+Expected: install clean, 71/71 tests PASS, no type errors, `dist/cli.js` emitted.
 
 - [ ] **Step 4: Smoke-test the themed output**
 
