@@ -347,7 +347,14 @@ const radiusToken = z.enum(["sm", "md", "lg", "full"]);
 
 export const themeConfigSchema = z
   .object({
-    theme: z.string().default("light"),
+    theme: z
+      .enum(PRESET_NAMES, {
+        errorMap: (issue, ctx) =>
+          issue.code === "invalid_enum_value"
+            ? { message: `unknown theme "${ctx.data}" (valid: ${PRESET_NAMES.join(", ")})` }
+            : { message: ctx.defaultError },
+      })
+      .default("light"),
     tokens: z
       .object({
         accent: colorToken.optional(),
@@ -368,7 +375,7 @@ export const themeConfigSchema = z
 export type ThemeConfig = z.infer<typeof themeConfigSchema>;
 ```
 
-(`theme` stays `z.string()` here so loadSections can emit the spec's curated "unknown theme" message instead of a raw zod enum error.)
+(The enum's `errorMap` produces the spec's curated "unknown theme" message through the normal issue formatting — no manual membership check needed, and `ThemeConfig["theme"]` narrows to the preset union for downstream type safety.)
 
 - [ ] **Step 6: Implement — extend `src/engine/loadSections.ts`**
 
@@ -376,7 +383,6 @@ Add to the imports:
 
 ```ts
 import { themeConfigSchema, type ThemeConfig } from "../schema/files.js";
-import { PRESET_NAMES } from "../theme/presets.js";
 ```
 
 Extend the `Sections` interface:
@@ -422,11 +428,6 @@ Then, after the site-file validation block and before the return, add:
         .join("\n");
       throw new LoadError(issues);
     }
-    if (!PRESET_NAMES.includes(parsed.data.theme as (typeof PRESET_NAMES)[number])) {
-      throw new LoadError(
-        `link.free.config.json → theme: unknown theme "${parsed.data.theme}" (valid: ${PRESET_NAMES.join(", ")})`,
-      );
-    }
     theme = parsed.data;
   }
 ```
@@ -442,7 +443,7 @@ Note: a directory containing ONLY `link.free.config.json` is now a valid build (
 - [ ] **Step 7: Run tests to verify they pass**
 
 Run: `pnpm test`
-Expected: PASS — new 9 tests pass; full suite green (57 tests). `pnpm typecheck` may fail here because renderPage tests construct `Sections` without `theme` — that is fixed in Task 5; for now confirm only vitest is green and report any typecheck failures as expected-pending.
+Expected: PASS — new 10 tests pass (9 planned + config-only-dir test added in review); full suite green (59 tests). `pnpm typecheck` must also be clean at the final commit — the review cycle added `theme: { theme: "light" }` to the renderPage test fixtures in this same task rather than deferring to Task 5.
 
 - [ ] **Step 8: Commit**
 
@@ -550,7 +551,7 @@ function cssUrl(value: string): string {
 }
 
 export function resolveTheme(config: ThemeConfig): ResolvedTheme {
-  const name = config.theme as PresetName;
+  const name = config.theme;
   const preset = PRESETS[name];
   const t = config.tokens ?? {};
 
@@ -882,7 +883,7 @@ export function renderPage(sections: Sections): string {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test && pnpm typecheck`
-Expected: full suite PASS (68 tests), typecheck clean.
+Expected: full suite PASS (69 tests), typecheck clean.
 
 - [ ] **Step 5: Commit**
 
@@ -937,7 +938,7 @@ self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.
 - [ ] **Step 3: Full clean verification**
 
 Run: `rm -rf node_modules dist example/dist && pnpm install && pnpm test && pnpm typecheck && pnpm build`
-Expected: install clean, 68/68 tests PASS, no type errors, `dist/cli.js` emitted.
+Expected: install clean, 69/69 tests PASS, no type errors, `dist/cli.js` emitted.
 
 - [ ] **Step 4: Smoke-test the themed output**
 
