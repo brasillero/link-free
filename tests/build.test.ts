@@ -42,7 +42,7 @@ describe("build", () => {
 
     expect(outPath).toBe(join(out, "dist", "index.html"));
     expect(html).toContain("<title>Jane — Links</title>");
-    expect(html).toContain("<h1>Jane</h1>");
+    expect(html).toContain('<h1 class="text-2xl font-semibold text-ink">Jane</h1>');
     expect(html).toContain('href="https://github.com/jane"');
     expect(html).toContain('href="https://b.dev"');
     expect(html).toContain("© 2026 Jane");
