@@ -783,7 +783,7 @@ Append these new tests inside the describe block:
 
   it("emits bg-image variables only when configured", () => {
     const without = renderPage(full);
-    expect(without).not.toContain("--lf-bg-image");
+    expect(without).not.toContain("--lf-bg-image:"); // colon: the precompiled CSS references var(--lf-bg-image, none)
 
     const withImage = renderPage({
       ...full,
@@ -883,7 +883,7 @@ export function renderPage(sections: Sections): string {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm test && pnpm typecheck`
-Expected: full suite PASS (71 tests), typecheck clean.
+Expected: full suite PASS (72 tests — 67 + 5 new; the review cycle added a minimal-preset extraCss test and tightened omission assertions to prefix form `"<header"`/`"<main"`/`"<footer"`; existing full-document tag assertions use prefix form too since tags now carry classes).
 
 - [ ] **Step 5: Commit**
 
@@ -938,7 +938,7 @@ self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.
 - [ ] **Step 3: Full clean verification**
 
 Run: `rm -rf node_modules dist example/dist && pnpm install && pnpm test && pnpm typecheck && pnpm build`
-Expected: install clean, 71/71 tests PASS, no type errors, `dist/cli.js` emitted.
+Expected: install clean, 72/72 tests PASS, no type errors, `dist/cli.js` emitted.
 
 - [ ] **Step 4: Smoke-test the themed output**
 
