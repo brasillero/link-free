@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PRESET_NAMES } from "../theme/presets.js";
 
 export const siteFileSchema = z
   .object({
@@ -20,11 +21,18 @@ export const sectionFileSchema = z.object({
 const colorToken = z.string().min(1);
 const radiusToken = z.enum(["sm", "md", "lg", "full"]);
 
-// `theme` stays a plain string so loadSections can emit a curated "unknown theme"
-// message listing the valid PRESET_NAMES instead of a raw zod enum error.
+// The enum errorMap emits a curated "unknown theme" message listing the valid
+// PRESET_NAMES instead of zod's raw "Invalid enum value" error.
 export const themeConfigSchema = z
   .object({
-    theme: z.string().default("light"),
+    theme: z
+      .enum(PRESET_NAMES, {
+        errorMap: (issue, ctx) =>
+          issue.code === "invalid_enum_value"
+            ? { message: `unknown theme "${ctx.data}" (valid: ${PRESET_NAMES.join(", ")})` }
+            : { message: ctx.defaultError },
+      })
+      .default("light"),
     tokens: z
       .object({
         accent: colorToken.optional(),

@@ -8,7 +8,6 @@ import {
   type ThemeConfig,
 } from "../schema/files.js";
 import { COMPONENT_NAMES, registry, type ValidatedBlock } from "../components/registry.js";
-import { PRESET_NAMES } from "../theme/presets.js";
 
 export class LoadError extends Error {}
 
@@ -114,11 +113,6 @@ export async function loadSections(dir: string): Promise<Sections> {
         .map((issue) => `link.free.config.json → ${issue.path.join(".")}: ${issue.message}`)
         .join("\n");
       throw new LoadError(issues);
-    }
-    if (!PRESET_NAMES.includes(parsed.data.theme as (typeof PRESET_NAMES)[number])) {
-      throw new LoadError(
-        `link.free.config.json → theme: unknown theme "${parsed.data.theme}" (valid: ${PRESET_NAMES.join(", ")})`,
-      );
     }
     theme = parsed.data;
   }

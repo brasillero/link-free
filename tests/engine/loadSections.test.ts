@@ -106,4 +106,11 @@ describe("loadSections", () => {
     await write("link.free.config.json", { tokens: { radius: "huge" } });
     await expect(loadSections(dir)).rejects.toThrow(/link\.free\.config\.json → tokens\.radius/);
   });
+
+  it("accepts a directory containing only link.free.config.json", async () => {
+    await write("link.free.config.json", { theme: "dark" });
+    const sections = await loadSections(dir);
+    expect(sections.theme.theme).toBe("dark");
+    expect(sections.header).toBeNull();
+  });
 });

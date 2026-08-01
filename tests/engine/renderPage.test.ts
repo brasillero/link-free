@@ -10,6 +10,7 @@ const full: Sections = {
     canonicalUrl: "https://links.jane.dev",
     ogImage: "https://links.jane.dev/og.png",
   },
+  theme: { theme: "light" },
   header: [
     { component: "profile", image: "https://example.com/a.png", name: "Jane", bio: "dev" },
     {
@@ -42,7 +43,7 @@ describe("renderPage", () => {
   });
 
   it("omits sections whose file was absent", () => {
-    const html = renderPage({ site: {}, header: null, body: null, footer: null });
+    const html = renderPage({ site: {}, theme: { theme: "light" }, header: null, body: null, footer: null });
     expect(html).not.toContain("<header>");
     expect(html).not.toContain("<main>");
     expect(html).not.toContain("<footer>");
@@ -52,7 +53,7 @@ describe("renderPage", () => {
     const withProfile = renderPage({ ...full, site: {}, footer: null, body: null });
     expect(withProfile).toContain("<title>Jane</title>");
 
-    const bare = renderPage({ site: {}, header: null, body: null, footer: null });
+    const bare = renderPage({ site: {}, theme: { theme: "light" }, header: null, body: null, footer: null });
     expect(bare).toContain("<title>Links</title>");
   });
 
@@ -68,7 +69,7 @@ describe("renderPage", () => {
   });
 
   it("omits sections with an empty blocks array", () => {
-    const html = renderPage({ site: {}, header: [], body: [], footer: [] });
+    const html = renderPage({ site: {}, theme: { theme: "light" }, header: [], body: [], footer: [] });
     expect(html).not.toContain("<header>");
     expect(html).not.toContain("<main>");
     expect(html).not.toContain("<footer>");
