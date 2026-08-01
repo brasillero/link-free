@@ -19,7 +19,7 @@ Config files (all optional; missing file = section omitted):
 | `link.body.json` | `link` blocks (title, url, description) |
 | `link.footer.json` | `text` blocks |
 
-See `example/` for a complete config. Design spec: `docs/superpowers/specs/2026-07-30-link-free-mvp-design.md`.
+See `example/` for a complete config. Design spec: `docs/superpowers/specs/2026-07-30-link-free-mvp-design.md`. Theming spec: `docs/superpowers/specs/2026-07-30-link-free-theming-design.md`.
 
 ## Theming
 

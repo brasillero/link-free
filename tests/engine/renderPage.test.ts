@@ -103,7 +103,7 @@ describe("renderPage", () => {
     expect(html).toContain("<style>");
     expect(html).toContain("--lf-bg: #fafafa;");
     expect(html.indexOf("</head>")).toBeGreaterThan(html.indexOf("--lf-bg"));
-    expect(html.indexOf("tailwindcss")).toBeLessThan(html.indexOf("--lf-bg:"));
+    expect(html.indexOf(".lf-page")).toBeLessThan(html.indexOf("--lf-bg:"));
   });
 
   it("resolves token overrides into the :root block", () => {

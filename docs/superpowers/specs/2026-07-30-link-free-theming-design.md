@@ -58,7 +58,7 @@ Three presets ship in v1. Each is a **complete** token map (no inheritance).
 | Preset | Character |
 |---|---|
 | `light` | Clean default: white/neutral background, dark text, blue accent, rounded cards |
-| `dark` | Near-black background, light text, same accent family, translucent cards |
+| `dark` | Near-black background, light text, same accent family, solid near-black cards |
 | `minimal` | Brutalist: no cards, underline links, sharp corners, system font |
 
 The internal token map (per preset, overridable by users unless noted):

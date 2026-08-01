@@ -48,6 +48,34 @@ describe("build", () => {
     expect(html).toContain("© 2026 Jane");
   });
 
+  it("applies theme config end-to-end", async () => {
+    await write("link.free.config.json", {
+      theme: "dark",
+      tokens: { accent: "#f472b6" },
+    });
+    await write("link.body.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+
+    const outPath = await build(dir, join(out, "dist"));
+    const html = await readFile(outPath, "utf8");
+
+    expect(html).toContain("--lf-accent: #f472b6;");
+    expect(html).toContain("--lf-bg: #0a0a0a;");
+    expect(html).toContain("<style>");
+  });
+
+  it("falls back to the light preset without a config file", async () => {
+    await write("link.body.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+
+    const outPath = await build(dir, join(out, "dist"));
+    const html = await readFile(outPath, "utf8");
+
+    expect(html).toContain("--lf-bg: #fafafa;");
+  });
+
   it("does not write any output file on validation error", async () => {
     await write("link.body.json", { blocks: [{ component: "link", title: "x", url: "bad" }] });
     await expect(build(dir, join(out, "dist"))).rejects.toThrow(/blocks\[0\]\.url/);
