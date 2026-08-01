@@ -1,5 +1,7 @@
 import { renderBlock, type ValidatedBlock } from "../components/registry.js";
 import { escapeHtml } from "../escapeHtml.js";
+import { resolveTheme } from "../theme/resolveTheme.js";
+import { stylesCss } from "../theme/styles.css.js";
 import type { Sections } from "./loadSections.js";
 
 function findProp(blocks: ValidatedBlock[] | null, component: string, prop: string): string | undefined {
@@ -8,14 +10,14 @@ function findProp(blocks: ValidatedBlock[] | null, component: string, prop: stri
   return typeof value === "string" ? value : undefined;
 }
 
-function wrapSection(tag: string, blocks: ValidatedBlock[] | null): string | null {
+function wrapSection(tag: string, className: string, blocks: ValidatedBlock[] | null): string | null {
   if (!blocks || blocks.length === 0) return null;
   const body = blocks.map(renderBlock).join("\n  ");
-  return `<${tag}>\n  ${body}\n</${tag}>`;
+  return `<${tag} class="${className}">\n  ${body}\n</${tag}>`;
 }
 
 export function renderPage(sections: Sections): string {
-  const { site, header, body, footer } = sections;
+  const { site, theme, header, body, footer } = sections;
 
   const title = site.title || findProp(header, "profile", "name") || "Links";
   const description = site.description || findProp(header, "profile", "bio");
@@ -34,22 +36,29 @@ export function renderPage(sections: Sections): string {
   meta.push('  <meta name="twitter:card" content="summary">');
   meta.push('  <meta name="robots" content="index, follow">');
 
+  const resolved = resolveTheme(theme);
+  const styles = [
+    `  <style>${stylesCss}</style>`,
+    `  <style>${resolved.rootCss}${resolved.extraCss ? `\n${resolved.extraCss}` : ""}</style>`,
+  ];
+
   // Body links are wrapped in a real list so they are crawlable without JS.
   const bodyHtml =
     body && body.length > 0
-      ? `<main>\n  <ul>\n    ${body.map(renderBlock).join("\n    ")}\n  </ul>\n</main>`
+      ? `<main class="mx-auto w-full max-w-md flex-1 px-6 py-10">\n  <ul class="flex flex-col gap-[var(--lf-spacing)]">\n    ${body.map(renderBlock).join("\n    ")}\n  </ul>\n</main>`
       : null;
 
   const parts = [
     "<!doctype html>",
-    `<html lang="${escapeHtml(site.lang ?? "en")}">`,
+    `<html lang="${escapeHtml(site.lang || "en")}">`,
     "<head>",
     ...meta,
+    ...styles,
     "</head>",
-    "<body>",
-    wrapSection("header", header),
+    '<body class="lf-page flex min-h-screen flex-col items-center font-sans text-ink">',
+    wrapSection("header", "flex flex-col items-center gap-3 px-6 pt-16", header),
     bodyHtml,
-    wrapSection("footer", footer),
+    wrapSection("footer", "px-6 pb-10 text-center", footer),
     "</body>",
     "</html>",
   ];
