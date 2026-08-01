@@ -12,6 +12,6 @@ describe("registry", () => {
 
   it("renderBlock dispatches by component name", () => {
     const html = renderBlock({ component: "text", text: "hi" });
-    expect(html).toBe("<p>hi</p>");
+    expect(html).toBe('<p class="text-sm text-muted">hi</p>');
   });
 });

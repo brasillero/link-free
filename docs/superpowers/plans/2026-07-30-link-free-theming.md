@@ -1,0 +1,970 @@
+# link-free Theming Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Add theming to link-free: Tailwind v4 utility classes in renderers, precompiled CSS inlined at package build time, 3 presets (light/dark/minimal) + user token overrides via a new optional `link.free.config.json`, emitted as a `:root` CSS-variables block — output stays one zero-JS self-contained HTML file.
+
+**Architecture:** Tailwind v4 runs at *package* build time (`pnpm css` → generated `src/theme/styles.css.ts`, gitignored) and ships inlined in the bundle — zero Tailwind at user runtime. Theme values are CSS custom properties (`--lf-*`) bound to utilities via Tailwind's `@theme`. At user build time, `resolveTheme(config)` shallow-merges preset + token overrides and `renderPage` emits two `<style>` tags: precompiled CSS, then `:root{…}` + preset extras.
+
+**Tech Stack:** TypeScript, Tailwind CSS v4 + `@tailwindcss/cli` (dev-only), zod v3, tsup, vitest, pnpm.
+
+**Spec:** `docs/superpowers/specs/2026-07-30-link-free-theming-design.md`
+
+---
+
+## File Structure
+
+New files:
+
+```
+src/theme/
+  input.css           # Tailwind entry: @import, @source, @theme bindings, .lf-page component CSS
+  presets.ts          # PRESETS (complete token maps), PRESET_NAMES, PRESET_CSS (per-preset extra CSS)
+  resolveTheme.ts     # resolveTheme(config) → { name, rootCss, extraCss }
+  styles.css.ts       # GENERATED (gitignored) — export const stylesCss: string
+scripts/
+  build-styles.mjs    # runs Tailwind CLI, wraps output CSS into styles.css.ts
+tests/theme/
+  pipeline.test.ts    # guard: generated CSS exists, minified, no @tailwind directives
+  resolveTheme.test.ts
+```
+
+Modified files:
+
+```
+package.json          # devDeps tailwindcss + @tailwindcss/cli; scripts css/build/test/dev
+.gitignore            # + src/theme/styles.css.ts
+src/schema/files.ts   # + themeConfigSchema, ThemeConfig
+src/engine/loadSections.ts  # loads link.free.config.json; Sections gains `theme: ThemeConfig`
+src/engine/renderPage.ts    # emits two <style> tags; layout classes on body/header/main/footer
+src/components/profile.ts, socials.ts, link.ts, text.ts  # + Tailwind classes
+tests/components/render.test.ts, tests/engine/renderPage.test.ts  # updated expectations
+example/link.free.config.json  # new example config
+README.md             # theming docs
+```
+
+Conventions carried over from MVP: `.js` import suffixes, zod v3 single-arg APIs, `escapeHtml` for all user text, `LoadError` for config problems.
+
+---
+
+### Task 1: Tailwind toolchain + precompile pipeline
+
+**Files:**
+- Modify: `package.json`
+- Modify: `.gitignore`
+- Create: `src/theme/input.css`
+- Create: `scripts/build-styles.mjs`
+- Test: `tests/theme/pipeline.test.ts`
+
+- [ ] **Step 1: Add dependencies and scripts**
+
+Run: `pnpm add -D tailwindcss @tailwindcss/cli`
+Expected: both land in devDependencies as v4.x (if v5+ resolves, pin `tailwindcss@^4 @tailwindcss/cli@^4`).
+
+Update `package.json` scripts to (replace existing `build`/`test`/`dev`):
+
+```json
+  "scripts": {
+    "css": "node scripts/build-styles.mjs",
+    "build": "pnpm css && tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "pnpm css && vitest run",
+    "dev": "pnpm css && vitest"
+  },
+```
+
+Add to `.gitignore`:
+
+```
+src/theme/styles.css.ts
+src/theme/.styles.out.css
+```
+
+- [ ] **Step 2: Write `src/theme/input.css`**
+
+```css
+@import "tailwindcss";
+@source "../";
+
+@theme {
+  --color-surface: var(--lf-surface);
+  --color-ink: var(--lf-text);
+  --color-muted: var(--lf-text-muted);
+  --color-accent: var(--lf-accent);
+  --font-sans: var(--lf-font);
+  --radius-card: var(--lf-radius);
+  --radius-avatar: var(--lf-avatar-radius);
+}
+
+@layer components {
+  .lf-page {
+    background-color: var(--lf-bg);
+    background-image: var(--lf-bg-image, none);
+    background-size: cover;
+    background-position: center;
+  }
+  .lf-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: var(--lf-surface);
+    opacity: var(--lf-overlay, 0);
+    pointer-events: none;
+  }
+  .lf-page > * {
+    position: relative;
+  }
+}
+```
+
+Note: `@source "../"` scans `src/` for class names (input.css lives in `src/theme/`).
+
+- [ ] **Step 3: Write `scripts/build-styles.mjs`**
+
+```js
+import { execSync } from "node:child_process";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
+
+const input = "src/theme/input.css";
+const tmp = "src/theme/.styles.out.css";
+const out = "src/theme/styles.css.ts";
+
+try {
+  execSync(`pnpm exec tailwindcss -i ${input} -o ${tmp} --minify`, { stdio: "inherit" });
+} catch {
+  // Some environments expose the bin under the package name instead.
+  execSync(`pnpm exec @tailwindcss/cli -i ${input} -o ${tmp} --minify`, { stdio: "inherit" });
+}
+
+const css = readFileSync(tmp, "utf8");
+writeFileSync(
+  out,
+  `// GENERATED by scripts/build-styles.mjs — do not edit\nexport const stylesCss = ${JSON.stringify(css)};\n`,
+);
+rmSync(tmp);
+console.log(`styles.css.ts written (${css.length} bytes)`);
+```
+
+- [ ] **Step 4: Write the pipeline guard test** — `tests/theme/pipeline.test.ts`:
+
+```ts
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+describe("tailwind precompile pipeline", () => {
+  it("generates a minified stylesheet with no tailwind directives left", () => {
+    execSync("pnpm css", { stdio: "pipe" });
+    const mod = readFileSync("src/theme/styles.css.ts", "utf8");
+    expect(mod).toContain("export const stylesCss");
+    const css = JSON.parse(mod.match(/export const stylesCss = (".*");/s)![1]) as string;
+    expect(css.length).toBeGreaterThan(500);
+    expect(css).not.toContain("@tailwind");
+    expect(css).not.toContain("@apply");
+    expect(css).toContain("--lf-surface");
+  });
+});
+```
+
+- [ ] **Step 5: Run the pipeline and the test**
+
+Run: `pnpm css && pnpm vitest run tests/theme/pipeline.test.ts`
+Expected: script prints `styles.css.ts written (N bytes)` with N > 500; test PASS (1 test).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add package.json pnpm-lock.yaml .gitignore src/theme/input.css scripts/build-styles.mjs tests/theme/pipeline.test.ts
+git commit -m "build: tailwind v4 precompile pipeline (styles.css.ts generated)"
+```
+
+---
+
+### Task 2: Theme config schema + loadSections integration
+
+**Files:**
+- Modify: `src/schema/files.ts`
+- Modify: `src/engine/loadSections.ts`
+- Create: `src/theme/presets.ts` (PRESET_NAMES only — full maps land in Task 3; create the complete file now to avoid a rewrite)
+- Test: `tests/schema/themeConfig.test.ts`, `tests/engine/loadSections.test.ts` (extend)
+
+- [ ] **Step 1: Write the failing schema test** — `tests/schema/themeConfig.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { themeConfigSchema } from "../../src/schema/files.js";
+
+describe("themeConfigSchema", () => {
+  it("applies defaults to an empty object", () => {
+    expect(themeConfigSchema.parse({})).toEqual({ theme: "light" });
+  });
+
+  it("accepts a full config and strips unknown keys", () => {
+    const parsed = themeConfigSchema.parse({
+      theme: "dark",
+      tokens: {
+        accent: "#ff6b6b",
+        backgroundImage: "https://example.com/bg.jpg",
+        font: "serif",
+        radius: "lg",
+        avatarRadius: "full",
+        density: "compact",
+        futureToken: "x",
+      },
+    });
+    expect(parsed.theme).toBe("dark");
+    expect(parsed.tokens?.accent).toBe("#ff6b6b");
+    expect("futureToken" in (parsed.tokens ?? {})).toBe(false);
+  });
+
+  it("rejects a bad enum token", () => {
+    expect(() => themeConfigSchema.parse({ tokens: { radius: "huge" } })).toThrow();
+  });
+
+  it("rejects a non-URL backgroundImage", () => {
+    expect(() => themeConfigSchema.parse({ tokens: { backgroundImage: "not-a-url" } })).toThrow();
+  });
+
+  it("rejects an empty color token", () => {
+    expect(() => themeConfigSchema.parse({ tokens: { accent: "" } })).toThrow();
+  });
+});
+```
+
+- [ ] **Step 2: Write the failing loadSections tests** — append to `tests/engine/loadSections.test.ts` inside the existing describe block:
+
+```ts
+  it("returns the default theme when link.free.config.json is absent", async () => {
+    await write("link.body.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+    const sections = await loadSections(dir);
+    expect(sections.theme).toEqual({ theme: "light" });
+  });
+
+  it("loads and validates link.free.config.json", async () => {
+    await write("link.free.config.json", { theme: "dark", tokens: { accent: "#fff" } });
+    const sections = await loadSections(dir);
+    expect(sections.theme.theme).toBe("dark");
+    expect(sections.theme.tokens?.accent).toBe("#fff");
+  });
+
+  it("rejects an unknown preset, listing valid themes", async () => {
+    await write("link.free.config.json", { theme: "dracula" });
+    await expect(loadSections(dir)).rejects.toThrow(
+      /link\.free\.config\.json → theme: unknown theme "dracula" \(valid: light, dark, minimal\)/,
+    );
+  });
+
+  it("rejects a bad token with a zod issue path", async () => {
+    await write("link.free.config.json", { tokens: { radius: "huge" } });
+    await expect(loadSections(dir)).rejects.toThrow(/link\.free\.config\.json → tokens\.radius/);
+  });
+```
+
+- [ ] **Step 3: Run tests to verify they fail**
+
+Run: `pnpm vitest run tests/schema/themeConfig.test.ts tests/engine/loadSections.test.ts`
+Expected: FAIL — `themeConfigSchema` not exported; `sections.theme` undefined.
+
+- [ ] **Step 4: Implement — `src/theme/presets.ts`**
+
+```ts
+export const PRESET_NAMES = ["light", "dark", "minimal"] as const;
+export type PresetName = (typeof PRESET_NAMES)[number];
+
+/** A fully-resolved preset: every token the stylesheet needs. */
+export interface TokenMap {
+  background: string;
+  surface: string;
+  text: string;
+  textMuted: string;
+  accent: string;
+  font: string;
+  radius: string;
+  avatarRadius: string;
+  spacing: string;
+  /** Scrim opacity over backgroundImage (0–1); emitted only when an image is set. */
+  overlay: string;
+}
+
+const SYSTEM_FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
+
+export const PRESETS: Record<PresetName, TokenMap> = {
+  light: {
+    background: "#fafafa",
+    surface: "#ffffff",
+    text: "#171717",
+    textMuted: "#525252",
+    accent: "#2563eb",
+    font: SYSTEM_FONT,
+    radius: "0.75rem",
+    avatarRadius: "9999px",
+    spacing: "0.75rem",
+    overlay: "0.55",
+  },
+  dark: {
+    background: "#0a0a0a",
+    surface: "#171717",
+    text: "#fafafa",
+    textMuted: "#a3a3a3",
+    accent: "#60a5fa",
+    font: SYSTEM_FONT,
+    radius: "0.75rem",
+    avatarRadius: "9999px",
+    spacing: "0.75rem",
+    overlay: "0.7",
+  },
+  minimal: {
+    background: "#ffffff",
+    surface: "transparent",
+    text: "#000000",
+    textMuted: "#404040",
+    accent: "#000000",
+    font: SYSTEM_FONT,
+    radius: "0",
+    avatarRadius: "0",
+    spacing: "0.5rem",
+    overlay: "0.5",
+  },
+};
+
+/** Extra preset-only CSS appended after the :root block (not user-overridable). */
+export const PRESET_CSS: Record<PresetName, string> = {
+  light: "",
+  dark: "",
+  minimal: ".lf-link{background:transparent;text-decoration:underline;box-shadow:none}",
+};
+```
+
+- [ ] **Step 5: Implement — extend `src/schema/files.ts`** (append; existing content unchanged):
+
+```ts
+import { PRESET_NAMES } from "../theme/presets.js";
+
+const colorToken = z.string().min(1);
+const radiusToken = z.enum(["sm", "md", "lg", "full"]);
+
+export const themeConfigSchema = z
+  .object({
+    theme: z
+      .enum(PRESET_NAMES, {
+        errorMap: (issue, ctx) =>
+          issue.code === "invalid_enum_value"
+            ? { message: `unknown theme "${ctx.data}" (valid: ${PRESET_NAMES.join(", ")})` }
+            : { message: ctx.defaultError },
+      })
+      .default("light"),
+    tokens: z
+      .object({
+        accent: colorToken.optional(),
+        background: colorToken.optional(),
+        backgroundImage: z.string().url().optional(),
+        surface: colorToken.optional(),
+        text: colorToken.optional(),
+        font: z.enum(["system", "serif", "mono"]).optional(),
+        radius: radiusToken.optional(),
+        avatarRadius: radiusToken.optional(),
+        density: z.enum(["compact", "comfortable"]).optional(),
+      })
+      .strip()
+      .optional(),
+  })
+  .strip();
+
+export type ThemeConfig = z.infer<typeof themeConfigSchema>;
+```
+
+(The enum's `errorMap` produces the spec's curated "unknown theme" message through the normal issue formatting — no manual membership check needed, and `ThemeConfig["theme"]` narrows to the preset union for downstream type safety.)
+
+- [ ] **Step 6: Implement — extend `src/engine/loadSections.ts`**
+
+Add to the imports:
+
+```ts
+import { themeConfigSchema, type ThemeConfig } from "../schema/files.js";
+```
+
+Extend the `Sections` interface:
+
+```ts
+export interface Sections {
+  site: SiteFile;
+  theme: ThemeConfig;
+  header: ValidatedBlock[] | null;
+  body: ValidatedBlock[] | null;
+  footer: ValidatedBlock[] | null;
+}
+```
+
+In `loadSections`, read the theme file ONCE, right after the `siteRaw` read at the top:
+
+```ts
+  const siteRaw = await readJsonFile(join(dir, "link.site.json"));
+  const themeRaw = await readJsonFile(join(dir, "link.free.config.json"));
+```
+
+Update the all-files-missing check to include the theme file — replace:
+
+```ts
+  if (siteRaw == null && SECTION_NAMES.every((n) => sections[n] == null)) {
+```
+
+with:
+
+```ts
+  if (siteRaw == null && themeRaw == null && SECTION_NAMES.every((n) => sections[n] == null)) {
+```
+
+Then, after the site-file validation block and before the return, add:
+
+```ts
+  let theme: ThemeConfig = themeConfigSchema.parse({});
+  if (themeRaw != null) {
+    const parsed = themeConfigSchema.safeParse(themeRaw);
+    if (!parsed.success) {
+      const issues = parsed.error.issues
+        .map((issue) => `link.free.config.json → ${issue.path.join(".")}: ${issue.message}`)
+        .join("\n");
+      throw new LoadError(issues);
+    }
+    theme = parsed.data;
+  }
+```
+
+Finally update the return:
+
+```ts
+  return { site, theme, ...sections };
+```
+
+Note: a directory containing ONLY `link.free.config.json` is now a valid build (styled empty page).
+
+- [ ] **Step 7: Run tests to verify they pass**
+
+Run: `pnpm test`
+Expected: PASS — new 10 tests pass (9 planned + config-only-dir test added in review); full suite green (59 tests). `pnpm typecheck` must also be clean at the final commit — the review cycle added `theme: { theme: "light" }` to the renderPage test fixtures in this same task rather than deferring to Task 5.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/theme/presets.ts src/schema/files.ts src/engine/loadSections.ts tests/schema/themeConfig.test.ts tests/engine/loadSections.test.ts
+git commit -m "feat: theme config schema + link.free.config.json loading"
+```
+
+---
+
+### Task 3: `resolveTheme`
+
+**Files:**
+- Create: `src/theme/resolveTheme.ts`
+- Test: `tests/theme/resolveTheme.test.ts`
+
+- [ ] **Step 1: Write the failing test** — `tests/theme/resolveTheme.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { resolveTheme } from "../../src/theme/resolveTheme.js";
+
+describe("resolveTheme", () => {
+  it("resolves the light preset by default", () => {
+    const theme = resolveTheme({ theme: "light" });
+    expect(theme.name).toBe("light");
+    expect(theme.rootCss).toContain("--lf-bg: #fafafa;");
+    expect(theme.rootCss).toContain("--lf-accent: #2563eb;");
+    expect(theme.rootCss).toContain("--lf-text-muted: #525252;");
+    expect(theme.rootCss).not.toContain("--lf-bg-image");
+    expect(theme.rootCss).not.toContain("--lf-overlay");
+    expect(theme.extraCss).toBe("");
+  });
+
+  it("applies token overrides on top of the preset", () => {
+    const theme = resolveTheme({ theme: "dark", tokens: { accent: "#ff6b6b" } });
+    expect(theme.rootCss).toContain("--lf-accent: #ff6b6b;");
+    expect(theme.rootCss).toContain("--lf-bg: #0a0a0a;"); // preset value kept
+  });
+
+  it("maps enum tokens to concrete values", () => {
+    const theme = resolveTheme({
+      theme: "light",
+      tokens: { font: "serif", radius: "sm", avatarRadius: "full", density: "compact" },
+    });
+    expect(theme.rootCss).toContain("--lf-font: Georgia");
+    expect(theme.rootCss).toContain("--lf-radius: 0.375rem;");
+    expect(theme.rootCss).toContain("--lf-avatar-radius: 9999px;");
+    expect(theme.rootCss).toContain("--lf-spacing: 0.5rem;");
+  });
+
+  it("emits bg-image and overlay only when backgroundImage is set", () => {
+    const theme = resolveTheme({
+      theme: "dark",
+      tokens: { backgroundImage: "https://example.com/bg.jpg" },
+    });
+    expect(theme.rootCss).toContain('--lf-bg-image: url("https://example.com/bg.jpg");');
+    expect(theme.rootCss).toContain("--lf-overlay: 0.7;");
+  });
+
+  it("includes preset extra css (minimal)", () => {
+    const theme = resolveTheme({ theme: "minimal" });
+    expect(theme.extraCss).toContain("text-decoration:underline");
+  });
+
+  it("css-escapes a quote in backgroundImage defensively", () => {
+    const theme = resolveTheme({
+      theme: "light",
+      tokens: { backgroundImage: 'https://example.com/a%22b.jpg' },
+    });
+    expect(theme.rootCss).not.toContain('url("https://example.com/a"b.jpg")');
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `pnpm vitest run tests/theme/resolveTheme.test.ts`
+Expected: FAIL — cannot find module
+
+- [ ] **Step 3: Write minimal implementation** — `src/theme/resolveTheme.ts`:
+
+```ts
+import type { ThemeConfig } from "../schema/files.js";
+import { PRESETS, PRESET_CSS, type PresetName, type TokenMap } from "./presets.js";
+
+const FONTS = {
+  system: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+  serif: "Georgia, 'Times New Roman', serif",
+  mono: "ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace",
+} as const;
+
+const RADII = { sm: "0.375rem", md: "0.75rem", lg: "1rem", full: "9999px" } as const;
+const DENSITIES = { compact: "0.5rem", comfortable: "1rem" } as const;
+
+export interface ResolvedTheme {
+  name: string;
+  rootCss: string;
+  extraCss: string;
+}
+
+/** Escape a string for safe inclusion inside a CSS url("…") — NOT html-escaping. */
+function cssUrl(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+export function resolveTheme(config: ThemeConfig): ResolvedTheme {
+  const name = config.theme;
+  const preset = PRESETS[name];
+  const t = config.tokens ?? {};
+
+  const tokens: TokenMap = {
+    ...preset,
+    background: t.background ?? preset.background,
+    surface: t.surface ?? preset.surface,
+    text: t.text ?? preset.text,
+    accent: t.accent ?? preset.accent,
+    font: t.font ? FONTS[t.font] : preset.font,
+    radius: t.radius ? RADII[t.radius] : preset.radius,
+    avatarRadius: t.avatarRadius ? RADII[t.avatarRadius] : preset.avatarRadius,
+    spacing: t.density ? DENSITIES[t.density] : preset.spacing,
+  };
+
+  const lines = [
+    `--lf-bg: ${tokens.background};`,
+    `--lf-surface: ${tokens.surface};`,
+    `--lf-text: ${tokens.text};`,
+    `--lf-text-muted: ${tokens.textMuted};`,
+    `--lf-accent: ${tokens.accent};`,
+    `--lf-font: ${tokens.font};`,
+    `--lf-radius: ${tokens.radius};`,
+    `--lf-avatar-radius: ${tokens.avatarRadius};`,
+    `--lf-spacing: ${tokens.spacing};`,
+  ];
+  if (t.backgroundImage) {
+    lines.push(`--lf-bg-image: url("${cssUrl(t.backgroundImage)}");`);
+    lines.push(`--lf-overlay: ${tokens.overlay};`);
+  }
+
+  return {
+    name,
+    rootCss: `:root {\n  ${lines.join("\n  ")}\n}`,
+    extraCss: PRESET_CSS[name],
+  };
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `pnpm vitest run tests/theme/resolveTheme.test.ts`
+Expected: PASS (6 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/theme/resolveTheme.ts tests/theme/resolveTheme.test.ts
+git commit -m "feat: resolveTheme (preset + token overrides → :root css)"
+```
+
+---
+
+### Task 4: Tailwind classes in component renderers
+
+**Files:**
+- Modify: `src/components/profile.ts`
+- Modify: `src/components/socials.ts`
+- Modify: `src/components/link.ts`
+- Modify: `src/components/text.ts`
+- Test: `tests/components/render.test.ts` (update expectations)
+
+- [ ] **Step 1: Update the test expectations** — in `tests/components/render.test.ts`, change ONLY these assertions (everything else unchanged):
+
+In the renderProfile "renders image, h1 name and optional bio" test, replace the three expects with:
+
+```ts
+    expect(html).toContain('<img src="https://example.com/a.png" alt="Jane"');
+    expect(html).toContain('class="h-24 w-24 rounded-avatar object-cover"');
+    expect(html).toContain('<h1 class="text-2xl font-semibold text-ink">Jane</h1>');
+    expect(html).toContain('<p class="text-muted">dev</p>');
+```
+
+In the "omits bio when absent" test, keep `expect(html).not.toContain("<p")`.
+
+In renderSocials test, keep existing expects and add:
+
+```ts
+    expect(html).toContain('<nav aria-label="Social links" class="flex items-center gap-5">');
+```
+
+Replace the renderLink "renders an li with anchor and optional description" test body with:
+
+```ts
+    const withDesc = renderLink({
+      component: "link",
+      title: "Blog",
+      url: "https://b.dev",
+      description: "my writing",
+    });
+    expect(withDesc).toBe(
+      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent">Blog</a><small class="mt-1 block text-center text-sm text-muted">my writing</small></li>',
+    );
+
+    const noDesc = renderLink({ component: "link", title: "Blog", url: "https://b.dev" });
+    expect(noDesc).toBe(
+      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent">Blog</a></li>',
+    );
+```
+
+Replace the renderText test expectation with:
+
+```ts
+    expect(renderText({ component: "text", text: "© 2026 <b>Jane</b>" })).toBe(
+      '<p class="text-sm text-muted">© 2026 &lt;b&gt;Jane&lt;/b&gt;</p>',
+    );
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `pnpm vitest run tests/components/render.test.ts`
+Expected: FAIL — outputs lack the new classes
+
+- [ ] **Step 3: Update the four renderers**
+
+`src/components/profile.ts` — replace the return statement:
+
+```ts
+export function renderProfile({ image, name, bio }: ProfileBlock): string {
+  const bioHtml = bio ? `\n  <p class="text-muted">${escapeHtml(bio)}</p>` : "";
+  return `<img src="${escapeHtml(image)}" alt="${escapeHtml(name)}" width="96" height="96" class="h-24 w-24 rounded-avatar object-cover">\n  <h1 class="text-2xl font-semibold text-ink">${escapeHtml(name)}</h1>${bioHtml}`;
+}
+```
+
+`src/components/socials.ts` — replace both class-bearing strings:
+
+```ts
+export function renderSocials({ links }: SocialsBlock): string {
+  const items = links
+    .map(
+      (l) =>
+        `    <a href="${escapeHtml(l.url)}" rel="me" aria-label="${escapeHtml(l.label)}" class="text-ink transition hover:text-accent [&_svg]:block [&_svg]:h-6 [&_svg]:w-6">${ICONS[l.icon]}</a>`,
+    )
+    .join("\n");
+  return `<nav aria-label="Social links" class="flex items-center gap-5">\n${items}\n  </nav>`;
+}
+```
+
+`src/components/link.ts`:
+
+```ts
+export function renderLink({ title, url, description }: LinkBlock): string {
+  const desc = description
+    ? `<small class="mt-1 block text-center text-sm text-muted">${escapeHtml(description)}</small>`
+    : "";
+  return `<li><a href="${escapeHtml(url)}" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent">${escapeHtml(title)}</a>${desc}</li>`;
+}
+```
+
+`src/components/text.ts`:
+
+```ts
+export function renderText({ text }: TextBlock): string {
+  return `<p class="text-sm text-muted">${escapeHtml(text)}</p>`;
+}
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `pnpm vitest run tests/components/render.test.ts`
+Expected: PASS (8 tests)
+
+- [ ] **Step 5: Verify Tailwind picks up the new classes**
+
+Run: `pnpm css && grep -o "rounded-card" src/theme/styles.css.ts | head -1 && grep -o "lf-link" src/theme/styles.css.ts | head -1`
+Expected: both greps print a match (classes made it into the generated CSS).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/components/profile.ts src/components/socials.ts src/components/link.ts src/components/text.ts tests/components/render.test.ts
+git commit -m "feat: tailwind utility classes in component renderers"
+```
+
+---
+
+### Task 5: renderPage — style emission + layout classes
+
+**Files:**
+- Modify: `src/engine/renderPage.ts`
+- Test: `tests/engine/renderPage.test.ts` (update fixtures + add tests)
+
+- [ ] **Step 1: Update the test file** — `tests/engine/renderPage.test.ts`:
+
+In the `full` fixture, add the theme field:
+
+```ts
+const full: Sections = {
+  site: {
+    title: "Jane — Links",
+    description: "all my links",
+    lang: "en",
+    canonicalUrl: "https://links.jane.dev",
+    ogImage: "https://links.jane.dev/og.png",
+  },
+  theme: { theme: "light" },
+  header: [
+    { component: "profile", image: "https://example.com/a.png", name: "Jane", bio: "dev" },
+    {
+      component: "socials",
+      links: [{ icon: "github", url: "https://github.com/jane", label: "GitHub" }],
+    },
+  ],
+  body: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+  footer: [{ component: "text", text: "© 2026 Jane" }],
+};
+```
+
+In EVERY other `renderPage({ ... })` call in the file that passes a literal `Sections`, add `theme: { theme: "light" }` (there are 5: "omits sections", both calls in "falls back to profile name", "omits canonical", "uses site.lang", plus the 4 added in review — check all calls, the typechecker will list any you miss).
+
+Append these new tests inside the describe block:
+
+```ts
+  it("emits precompiled css and resolved theme variables in two style tags", () => {
+    const html = renderPage(full);
+    expect(html).toContain("<style>");
+    expect(html).toContain("--lf-bg: #fafafa;");
+    expect(html.indexOf("</head>")).toBeGreaterThan(html.indexOf("--lf-bg"));
+  });
+
+  it("resolves token overrides into the :root block", () => {
+    const html = renderPage({
+      ...full,
+      theme: { theme: "dark", tokens: { accent: "#ff6b6b" } },
+    });
+    expect(html).toContain("--lf-accent: #ff6b6b;");
+    expect(html).toContain("--lf-bg: #0a0a0a;");
+  });
+
+  it("emits bg-image variables only when configured", () => {
+    const without = renderPage(full);
+    expect(without).not.toContain("--lf-bg-image:"); // colon: the precompiled CSS references var(--lf-bg-image, none)
+
+    const withImage = renderPage({
+      ...full,
+      theme: { theme: "dark", tokens: { backgroundImage: "https://example.com/bg.jpg" } },
+    });
+    expect(withImage).toContain('--lf-bg-image: url("https://example.com/bg.jpg");');
+    expect(withImage).toContain("--lf-overlay:");
+  });
+
+  it("applies layout classes to body and sections", () => {
+    const html = renderPage(full);
+    expect(html).toContain('<body class="lf-page flex min-h-screen flex-col items-center font-sans text-ink">');
+    expect(html).toContain('<main class="mx-auto w-full max-w-md flex-1 px-6 py-10">');
+    expect(html).toContain('<ul class="flex flex-col gap-[var(--lf-spacing)]">');
+  });
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `pnpm vitest run tests/engine/renderPage.test.ts`
+Expected: FAIL — no `<style>` tags / no classes yet (TS errors about missing `theme` may also appear until Step 3)
+
+- [ ] **Step 3: Update `src/engine/renderPage.ts`** — full new version:
+
+```ts
+import { renderBlock, type ValidatedBlock } from "../components/registry.js";
+import { escapeHtml } from "../escapeHtml.js";
+import { resolveTheme } from "../theme/resolveTheme.js";
+import { stylesCss } from "../theme/styles.css.js";
+import type { Sections } from "./loadSections.js";
+
+function findProp(blocks: ValidatedBlock[] | null, component: string, prop: string): string | undefined {
+  const block = blocks?.find((b) => b.component === component);
+  const value = block?.[prop];
+  return typeof value === "string" ? value : undefined;
+}
+
+function wrapSection(tag: string, className: string, blocks: ValidatedBlock[] | null): string | null {
+  if (!blocks || blocks.length === 0) return null;
+  const body = blocks.map(renderBlock).join("\n  ");
+  return `<${tag} class="${className}">\n  ${body}\n</${tag}>`;
+}
+
+export function renderPage(sections: Sections): string {
+  const { site, theme, header, body, footer } = sections;
+
+  const title = site.title || findProp(header, "profile", "name") || "Links";
+  const description = site.description || findProp(header, "profile", "bio");
+
+  const meta: string[] = [
+    '  <meta charset="utf-8">',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1">',
+    `  <title>${escapeHtml(title)}</title>`,
+  ];
+  if (description) meta.push(`  <meta name="description" content="${escapeHtml(description)}">`);
+  if (site.canonicalUrl) meta.push(`  <link rel="canonical" href="${escapeHtml(site.canonicalUrl)}">`);
+  meta.push(`  <meta property="og:title" content="${escapeHtml(title)}">`);
+  if (description) meta.push(`  <meta property="og:description" content="${escapeHtml(description)}">`);
+  meta.push('  <meta property="og:type" content="profile">');
+  if (site.ogImage) meta.push(`  <meta property="og:image" content="${escapeHtml(site.ogImage)}">`);
+  meta.push('  <meta name="twitter:card" content="summary">');
+  meta.push('  <meta name="robots" content="index, follow">');
+
+  const resolved = resolveTheme(theme);
+  const styles = [
+    `  <style>${stylesCss}</style>`,
+    `  <style>${resolved.rootCss}${resolved.extraCss ? `\n${resolved.extraCss}` : ""}</style>`,
+  ];
+
+  // Body links are wrapped in a real list so they are crawlable without JS.
+  const bodyHtml =
+    body && body.length > 0
+      ? `<main class="mx-auto w-full max-w-md flex-1 px-6 py-10">\n  <ul class="flex flex-col gap-[var(--lf-spacing)]">\n    ${body.map(renderBlock).join("\n    ")}\n  </ul>\n</main>`
+      : null;
+
+  const parts = [
+    "<!doctype html>",
+    `<html lang="${escapeHtml(site.lang || "en")}">`,
+    "<head>",
+    ...meta,
+    ...styles,
+    "</head>",
+    '<body class="lf-page flex min-h-screen flex-col items-center font-sans text-ink">',
+    wrapSection("header", "flex flex-col items-center gap-3 px-6 pt-16", header),
+    bodyHtml,
+    wrapSection("footer", "px-6 pb-10 text-center", footer),
+    "</body>",
+    "</html>",
+  ];
+
+  return parts.filter((p): p is string => p != null).join("\n") + "\n";
+}
+```
+
+(Also fixes the residual `site.lang ?? "en"` → `||` consistency nit from the MVP final review.)
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `pnpm test && pnpm typecheck`
+Expected: full suite PASS (72 tests — 67 + 5 new; the review cycle added a minimal-preset extraCss test and tightened omission assertions to prefix form `"<header"`/`"<main"`/`"<footer"`; existing full-document tag assertions use prefix form too since tags now carry classes).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/engine/renderPage.ts tests/engine/renderPage.test.ts
+git commit -m "feat: renderPage emits precompiled css + resolved theme, layout classes"
+```
+
+---
+
+### Task 6: Example, README, end-to-end verification
+
+**Files:**
+- Create: `example/link.free.config.json`
+- Modify: `README.md`
+
+- [ ] **Step 1: Write `example/link.free.config.json`**
+
+```json
+{
+  "theme": "dark",
+  "tokens": {
+    "accent": "#f472b6",
+    "radius": "lg",
+    "density": "comfortable"
+  }
+}
+```
+
+- [ ] **Step 2: Add a theming section to `README.md`** — append after the config files table:
+
+```markdown
+## Theming
+
+Add an optional `link.free.config.json` to pick a preset theme and override
+individual design tokens:
+
+```json
+{
+  "theme": "dark",
+  "tokens": { "accent": "#f472b6", "radius": "lg" }
+}
+```
+
+Presets: `light` (default), `dark`, `minimal`. Token overrides (all optional):
+`accent`, `background`, `backgroundImage`, `surface`, `text` (any CSS color),
+`font` (`system` | `serif` | `mono`), `radius` / `avatarRadius` (`sm` | `md` |
+`lg` | `full`), `density` (`compact` | `comfortable`). Output stays a single
+self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.
+```
+
+- [ ] **Step 3: Full clean verification**
+
+Run: `rm -rf node_modules dist example/dist && pnpm install && pnpm test && pnpm typecheck && pnpm build`
+Expected: install clean, 72/72 tests PASS, no type errors, `dist/cli.js` emitted.
+
+- [ ] **Step 4: Smoke-test the themed output**
+
+Run: `node dist/cli.js build --dir example --out example/dist`
+Expected: `built …/example/dist/index.html`. Then verify:
+
+```bash
+grep -c "<style>" example/dist/index.html        # expect: 2
+grep -o -- "--lf-accent: #f472b6;" example/dist/index.html   # expect: match
+grep -o -- "--lf-radius: 1rem;" example/dist/index.html      # expect: match
+grep -o "rounded-card" example/dist/index.html | head -1     # expect: match
+```
+
+Also open/inspect the first 40 lines of `example/dist/index.html` and confirm: meta head intact, two `<style>` blocks before `</head>`, `<body class="lf-page …">`, styled header/main/footer. Open the file in a browser if available and eyeball the dark theme — report what you see.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add example/link.free.config.json README.md
+git commit -m "docs: themed example + README theming section"
+```
+
+---
+
+## Notes for reviewers
+
+- `src/theme/styles.css.ts` is generated and gitignored; every `pnpm test`/`pnpm build` regenerates it via the `css` script. CI must run `pnpm css` (or just `pnpm test`) before tsup.
+- The `@theme` bindings make utilities like `bg-surface` compile to `var(--lf-surface)`, so preset/override changes need no recompilation of Tailwind — only the `:root` block changes per user build.
+- zod's `.url()` returns the input string un-normalized; `resolveTheme`'s `cssUrl` escape is the defensive layer for CSS context (HTML entities would NOT be decoded inside `<style>`).

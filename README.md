@@ -19,4 +19,22 @@ Config files (all optional; missing file = section omitted):
 | `link.body.json` | `link` blocks (title, url, description) |
 | `link.footer.json` | `text` blocks |
 
-See `example/` for a complete config. Design spec: `docs/superpowers/specs/2026-07-30-link-free-mvp-design.md`.
+See `example/` for a complete config. Design spec: `docs/superpowers/specs/2026-07-30-link-free-mvp-design.md`. Theming spec: `docs/superpowers/specs/2026-07-30-link-free-theming-design.md`.
+
+## Theming
+
+Add an optional `link.free.config.json` to pick a preset theme and override
+individual design tokens:
+
+```json
+{
+  "theme": "dark",
+  "tokens": { "accent": "#f472b6", "radius": "lg" }
+}
+```
+
+Presets: `light` (default), `dark`, `minimal`. Token overrides (all optional):
+`accent`, `background`, `backgroundImage` (URL), `surface`, `text` (any CSS color),
+`font` (`system` | `serif` | `mono`), `radius` / `avatarRadius` (`sm` | `md` |
+`lg` | `full`), `density` (`compact` | `comfortable`). Output stays a single
+self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.

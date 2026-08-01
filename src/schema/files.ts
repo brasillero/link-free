@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PRESET_NAMES } from "../theme/presets.js";
 
 export const siteFileSchema = z
   .object({
@@ -16,3 +17,37 @@ export type SiteFile = z.infer<typeof siteFileSchema>;
 export const sectionFileSchema = z.object({
   blocks: z.array(z.record(z.unknown())),
 });
+
+const colorToken = z.string().min(1).regex(/^[^<]+$/, "must not contain '<'");
+const radiusToken = z.enum(["sm", "md", "lg", "full"]);
+
+// The enum errorMap emits a curated "unknown theme" message listing the valid
+// PRESET_NAMES instead of zod's raw "Invalid enum value" error.
+export const themeConfigSchema = z
+  .object({
+    theme: z
+      .enum(PRESET_NAMES, {
+        errorMap: (issue, ctx) =>
+          issue.code === "invalid_enum_value"
+            ? { message: `unknown theme "${ctx.data}" (valid: ${PRESET_NAMES.join(", ")})` }
+            : { message: ctx.defaultError },
+      })
+      .default("light"),
+    tokens: z
+      .object({
+        accent: colorToken.optional(),
+        background: colorToken.optional(),
+        backgroundImage: z.string().url().regex(/^[^<]+$/, "must not contain '<'").optional(),
+        surface: colorToken.optional(),
+        text: colorToken.optional(),
+        font: z.enum(["system", "serif", "mono"]).optional(),
+        radius: radiusToken.optional(),
+        avatarRadius: radiusToken.optional(),
+        density: z.enum(["compact", "comfortable"]).optional(),
+      })
+      .strip()
+      .optional(),
+  })
+  .strip();
+
+export type ThemeConfig = z.infer<typeof themeConfigSchema>;

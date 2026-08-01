@@ -1,6 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { sectionFileSchema, siteFileSchema, type SiteFile } from "../schema/files.js";
+import {
+  sectionFileSchema,
+  siteFileSchema,
+  themeConfigSchema,
+  type SiteFile,
+  type ThemeConfig,
+} from "../schema/files.js";
 import { COMPONENT_NAMES, registry, type ValidatedBlock } from "../components/registry.js";
 
 export class LoadError extends Error {}
@@ -17,6 +23,7 @@ const SECTION_COMPONENTS: Record<SectionName, string[]> = {
 
 export interface Sections {
   site: SiteFile;
+  theme: ThemeConfig;
   header: ValidatedBlock[] | null;
   body: ValidatedBlock[] | null;
   footer: ValidatedBlock[] | null;
@@ -68,6 +75,7 @@ function validateBlocks(raw: unknown, section: SectionName): ValidatedBlock[] {
 
 export async function loadSections(dir: string): Promise<Sections> {
   const siteRaw = await readJsonFile(join(dir, "link.site.json"));
+  const themeRaw = await readJsonFile(join(dir, "link.free.config.json"));
 
   const sections: Record<SectionName, ValidatedBlock[] | null> = {
     header: null,
@@ -81,7 +89,7 @@ export async function loadSections(dir: string): Promise<Sections> {
     }
   }
 
-  if (siteRaw == null && SECTION_NAMES.every((n) => sections[n] == null)) {
+  if (siteRaw == null && themeRaw == null && SECTION_NAMES.every((n) => sections[n] == null)) {
     throw new LoadError(`no link.*.json files found in ${dir}`);
   }
 
@@ -97,5 +105,17 @@ export async function loadSections(dir: string): Promise<Sections> {
     site = parsed.data;
   }
 
-  return { site, ...sections };
+  let theme: ThemeConfig = themeConfigSchema.parse({});
+  if (themeRaw != null) {
+    const parsed = themeConfigSchema.safeParse(themeRaw);
+    if (!parsed.success) {
+      const issues = parsed.error.issues
+        .map((issue) => `link.free.config.json → ${issue.path.join(".")}: ${issue.message}`)
+        .join("\n");
+      throw new LoadError(issues);
+    }
+    theme = parsed.data;
+  }
+
+  return { site, theme, ...sections };
 }

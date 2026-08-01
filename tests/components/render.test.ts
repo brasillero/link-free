@@ -13,8 +13,9 @@ describe("renderProfile", () => {
       bio: "dev",
     });
     expect(html).toContain('<img src="https://example.com/a.png" alt="Jane"');
-    expect(html).toContain("<h1>Jane</h1>");
-    expect(html).toContain("<p>dev</p>");
+    expect(html).toContain('class="h-24 w-24 rounded-avatar object-cover"');
+    expect(html).toContain('<h1 class="text-2xl font-semibold text-ink">Jane</h1>');
+    expect(html).toContain('<p class="text-muted">dev</p>');
   });
 
   it("omits bio when absent", () => {
@@ -23,7 +24,7 @@ describe("renderProfile", () => {
       image: "https://example.com/a.png",
       name: "Jane",
     });
-    expect(html).not.toContain("<p>");
+    expect(html).not.toContain("<p");
   });
 
   it("escapes user text", () => {
@@ -43,7 +44,7 @@ describe("renderSocials", () => {
       component: "socials",
       links: [{ icon: "github", url: "https://github.com/jane", label: "GitHub" }],
     });
-    expect(html).toContain('<nav aria-label="Social links">');
+    expect(html).toContain('<nav aria-label="Social links" class="flex items-center gap-5">');
     expect(html).toContain('href="https://github.com/jane"');
     expect(html).toContain('rel="me"');
     expect(html).toContain('aria-label="GitHub"');
@@ -69,11 +70,13 @@ describe("renderLink", () => {
       description: "my writing",
     });
     expect(withDesc).toBe(
-      '<li><a href="https://b.dev">Blog</a><small>my writing</small></li>',
+      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent">Blog</a><small class="mt-1 block text-center text-sm text-muted">my writing</small></li>',
     );
 
     const noDesc = renderLink({ component: "link", title: "Blog", url: "https://b.dev" });
-    expect(noDesc).toBe('<li><a href="https://b.dev">Blog</a></li>');
+    expect(noDesc).toBe(
+      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent">Blog</a></li>',
+    );
   });
 
   it("escapes title and url", () => {
@@ -90,7 +93,7 @@ describe("renderLink", () => {
 describe("renderText", () => {
   it("renders an escaped paragraph", () => {
     expect(renderText({ component: "text", text: "© 2026 <b>Jane</b>" })).toBe(
-      "<p>© 2026 &lt;b&gt;Jane&lt;/b&gt;</p>",
+      '<p class="text-sm text-muted">© 2026 &lt;b&gt;Jane&lt;/b&gt;</p>',
     );
   });
 });

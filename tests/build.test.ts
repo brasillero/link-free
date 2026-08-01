@@ -42,10 +42,38 @@ describe("build", () => {
 
     expect(outPath).toBe(join(out, "dist", "index.html"));
     expect(html).toContain("<title>Jane — Links</title>");
-    expect(html).toContain("<h1>Jane</h1>");
+    expect(html).toContain('<h1 class="text-2xl font-semibold text-ink">Jane</h1>');
     expect(html).toContain('href="https://github.com/jane"');
     expect(html).toContain('href="https://b.dev"');
     expect(html).toContain("© 2026 Jane");
+  });
+
+  it("applies theme config end-to-end", async () => {
+    await write("link.free.config.json", {
+      theme: "dark",
+      tokens: { accent: "#f472b6" },
+    });
+    await write("link.body.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+
+    const outPath = await build(dir, join(out, "dist"));
+    const html = await readFile(outPath, "utf8");
+
+    expect(html).toContain("--lf-accent: #f472b6;");
+    expect(html).toContain("--lf-bg: #0a0a0a;");
+    expect(html).toContain("<style>");
+  });
+
+  it("falls back to the light preset without a config file", async () => {
+    await write("link.body.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+
+    const outPath = await build(dir, join(out, "dist"));
+    const html = await readFile(outPath, "utf8");
+
+    expect(html).toContain("--lf-bg: #fafafa;");
   });
 
   it("does not write any output file on validation error", async () => {
