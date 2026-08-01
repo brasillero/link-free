@@ -15,7 +15,7 @@
   "scripts": {
     "css": "node scripts/build-styles.mjs",
     "build": "pnpm css && tsup",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm css && tsc --noEmit",
     "test": "pnpm css && vitest run",
     "dev": "pnpm css && vitest"
   },

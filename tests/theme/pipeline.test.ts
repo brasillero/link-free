@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("tailwind precompile pipeline", () => {
   it("generates a minified stylesheet with no tailwind directives left", () => {
-    execSync("pnpm css", { stdio: "pipe" });
+    execSync("pnpm css", { stdio: "inherit" });
     const mod = readFileSync("src/theme/styles.css.ts", "utf8");
     expect(mod).toContain("export const stylesCss");
     const css = JSON.parse(mod.match(/export const stylesCss = (".*");/s)![1]) as string;

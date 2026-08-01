@@ -5,12 +5,7 @@ const input = "src/theme/input.css";
 const tmp = "src/theme/.styles.out.css";
 const out = "src/theme/styles.css.ts";
 
-try {
-  execSync(`pnpm exec tailwindcss -i ${input} -o ${tmp} --minify`, { stdio: "inherit" });
-} catch {
-  // Some environments expose the bin under the package name instead.
-  execSync(`pnpm exec @tailwindcss/cli -i ${input} -o ${tmp} --minify`, { stdio: "inherit" });
-}
+execSync(`pnpm exec tailwindcss -i ${input} -o ${tmp} --minify`, { stdio: "inherit" });
 
 const css = readFileSync(tmp, "utf8");
 writeFileSync(
