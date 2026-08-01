@@ -1,0 +1,8 @@
+{
+  "theme": "dark",
+  "tokens": {
+    "accent": "#f472b6",
+    "radius": "lg",
+    "density": "comfortable"
+  }
+}
