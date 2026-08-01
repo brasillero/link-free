@@ -931,6 +931,15 @@ describe("loadSections", () => {
     await write("link.site.json", { title: "Jane", canonicalUrl: "bad" });
     await expect(loadSections(dir)).rejects.toThrow(LoadError);
   });
+
+  it("rejects a component that is not allowed in that section", async () => {
+    await write("link.header.json", {
+      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
+    });
+    await expect(loadSections(dir)).rejects.toThrow(
+      /link\.header\.json → blocks\[0\]: component "link" not allowed here \(valid: profile, socials\)/,
+    );
+  });
 });
 ```
 
@@ -953,6 +962,13 @@ export class LoadError extends Error {}
 const SECTION_NAMES = ["header", "body", "footer"] as const;
 type SectionName = (typeof SECTION_NAMES)[number];
 
+/** Which components each section file accepts (spec §4.7). */
+const SECTION_COMPONENTS: Record<SectionName, string[]> = {
+  header: ["profile", "socials"],
+  body: ["link"],
+  footer: ["text"],
+};
+
 export interface Sections {
   site: SiteFile;
   header: ValidatedBlock[] | null;
@@ -974,7 +990,8 @@ async function readJsonFile(path: string): Promise<unknown | null> {
   }
 }
 
-function validateBlocks(raw: unknown, fileName: string): ValidatedBlock[] {
+function validateBlocks(raw: unknown, section: SectionName): ValidatedBlock[] {
+  const fileName = `link.${section}.json`;
   const wrapper = sectionFileSchema.safeParse(raw);
   if (!wrapper.success) {
     throw new LoadError(`${fileName}: expected an object with a "blocks" array`);
@@ -984,6 +1001,11 @@ function validateBlocks(raw: unknown, fileName: string): ValidatedBlock[] {
     if (typeof component !== "string" || !(component in registry)) {
       throw new LoadError(
         `${fileName} → blocks[${i}]: unknown component "${String(component)}" (valid: ${COMPONENT_NAMES.join(", ")})`,
+      );
+    }
+    if (!SECTION_COMPONENTS[section].includes(component)) {
+      throw new LoadError(
+        `${fileName} → blocks[${i}]: component "${component}" not allowed here (valid: ${SECTION_COMPONENTS[section].join(", ")})`,
       );
     }
     const result = registry[component].schema.safeParse(block);
@@ -1006,10 +1028,9 @@ export async function loadSections(dir: string): Promise<Sections> {
     footer: null,
   };
   for (const name of SECTION_NAMES) {
-    const fileName = `link.${name}.json`;
-    const raw = await readJsonFile(join(dir, fileName));
+    const raw = await readJsonFile(join(dir, `link.${name}.json`));
     if (raw != null) {
-      sections[name] = validateBlocks(raw, fileName);
+      sections[name] = validateBlocks(raw, name);
     }
   }
 
@@ -1036,7 +1057,7 @@ export async function loadSections(dir: string): Promise<Sections> {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm vitest run tests/engine/loadSections.test.ts`
-Expected: PASS (7 tests)
+Expected: PASS (8 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -1147,17 +1168,17 @@ function findProp(blocks: ValidatedBlock[] | null, component: string, prop: stri
   return typeof value === "string" ? value : undefined;
 }
 
-function wrapSection(tag: string, blocks: ValidatedBlock[] | null, inner = ""): string | null {
+function wrapSection(tag: string, blocks: ValidatedBlock[] | null): string | null {
   if (!blocks || blocks.length === 0) return null;
   const body = blocks.map(renderBlock).join("\n  ");
-  return `<${tag}>${inner}\n  ${body}\n${inner}</${tag}>`;
+  return `<${tag}>\n  ${body}\n</${tag}>`;
 }
 
 export function renderPage(sections: Sections): string {
   const { site, header, body, footer } = sections;
 
-  const title = site.title ?? findProp(header, "profile", "name") ?? "Links";
-  const description = site.description ?? findProp(header, "profile", "bio");
+  const title = site.title || findProp(header, "profile", "name") || "Links";
+  const description = site.description || findProp(header, "profile", "bio");
 
   const meta: string[] = [
     '  <meta charset="utf-8">',
@@ -1186,9 +1207,9 @@ export function renderPage(sections: Sections): string {
     ...meta,
     "</head>",
     "<body>",
-    wrapSection("header", header, "  "),
+    wrapSection("header", header),
     bodyHtml,
-    wrapSection("footer", footer, "  "),
+    wrapSection("footer", footer),
     "</body>",
     "</html>",
   ];
@@ -1200,7 +1221,7 @@ export function renderPage(sections: Sections): string {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm vitest run tests/engine/renderPage.test.ts`
-Expected: PASS (5 tests)
+Expected: PASS (9 tests — 5 original + 4 added in review: empty-array omission, empty-string title fallback, page-level escaping, bio description fallback + og:description)
 
 - [ ] **Step 5: Commit**
 
@@ -1463,7 +1484,7 @@ git commit -m "docs: runnable example config + CLI smoke verified"
 - [ ] **Step 1: Full clean run**
 
 Run: `rm -rf node_modules dist && pnpm install && pnpm test && pnpm typecheck && pnpm build`
-Expected: install clean, all 41 tests PASS, no type errors, bundle emitted.
+Expected: install clean, all 48 tests PASS, no type errors, bundle emitted.
 
 - [ ] **Step 2: Confirm output contract against spec**
 

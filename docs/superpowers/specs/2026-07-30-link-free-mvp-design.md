@@ -100,6 +100,22 @@ Every section file is an object with a `blocks` array. Each block declares its `
 
 Zod schemas **strip** unknown keys, so config files written against future versions still build with older CLIs (unknown keys ignored, not errors).
 
+### 4.7 Section component constraints
+
+Each section file accepts only its designated components — this guarantees valid HTML (e.g. a `link` block always lands inside the body's `<ul>`):
+
+| File | Allowed components |
+|---|---|
+| `link.header.json` | `profile`, `socials` |
+| `link.body.json` | `link` |
+| `link.footer.json` | `text` |
+
+A block whose `component` is valid but not allowed in that section is a hard error: `link.header.json → blocks[0]: component "link" not allowed here (valid: profile, socials)`.
+
+### 4.8 URL validation
+
+URL fields use zod's `.url()` (anything `new URL()` accepts). Schemes are intentionally **not** restricted to http(s): configs are authored by the page owner (no untrusted input), and `mailto:`/`tel:` links are legitimate for a link-in-bio page. HTML-escaping still applies to all rendered attribute values.
+
 ## 5. Architecture
 
 Single Node ESM package, TypeScript, bundled with tsup. One-way data flow: **discover → validate → render → write**.
