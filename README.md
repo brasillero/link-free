@@ -34,7 +34,7 @@ individual design tokens:
 ```
 
 Presets: `light` (default), `dark`, `minimal`. Token overrides (all optional):
-`accent`, `background`, `backgroundImage`, `surface`, `text` (any CSS color),
+`accent`, `background`, `backgroundImage` (URL), `surface`, `text` (any CSS color),
 `font` (`system` | `serif` | `mono`), `radius` / `avatarRadius` (`sm` | `md` |
 `lg` | `full`), `density` (`compact` | `comfortable`). Output stays a single
 self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.
