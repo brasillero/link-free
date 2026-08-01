@@ -1,3 +1,5 @@
 node_modules/
 dist/
 example/dist/
+src/theme/styles.css.ts
+src/theme/.styles.out.css

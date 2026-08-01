@@ -13,13 +13,16 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsup",
+    "css": "node scripts/build-styles.mjs",
+    "build": "pnpm css && tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "dev": "vitest"
+    "test": "pnpm css && vitest run",
+    "dev": "pnpm css && vitest"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
     "@types/node": "^20.14.0",
+    "tailwindcss": "^4.3.3",
     "tsup": "^8.1.0",
     "typescript": "^5.5.4",
     "vitest": "^1.6.0",

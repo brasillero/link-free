@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@source "../";
+
+@theme {
+  --color-surface: var(--lf-surface);
+  --color-ink: var(--lf-text);
+  --color-muted: var(--lf-text-muted);
+  --color-accent: var(--lf-accent);
+  --font-sans: var(--lf-font);
+  --radius-card: var(--lf-radius);
+  --radius-avatar: var(--lf-avatar-radius);
+}
+
+@layer components {
+  .lf-page {
+    background-color: var(--lf-bg);
+    background-image: var(--lf-bg-image, none);
+    background-size: cover;
+    background-position: center;
+  }
+  .lf-page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: var(--lf-surface);
+    opacity: var(--lf-overlay, 0);
+    pointer-events: none;
+  }
+  .lf-page > * {
+    position: relative;
+  }
+}
