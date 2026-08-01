@@ -44,9 +44,9 @@ describe("renderPage", () => {
 
   it("omits sections whose file was absent", () => {
     const html = renderPage({ site: {}, theme: { theme: "light" }, header: null, body: null, footer: null });
-    expect(html).not.toContain("<header>");
-    expect(html).not.toContain("<main>");
-    expect(html).not.toContain("<footer>");
+    expect(html).not.toContain("<header");
+    expect(html).not.toContain("<main");
+    expect(html).not.toContain("<footer");
   });
 
   it("falls back to profile name then 'Links' for the title", () => {
@@ -70,9 +70,9 @@ describe("renderPage", () => {
 
   it("omits sections with an empty blocks array", () => {
     const html = renderPage({ site: {}, theme: { theme: "light" }, header: [], body: [], footer: [] });
-    expect(html).not.toContain("<header>");
-    expect(html).not.toContain("<main>");
-    expect(html).not.toContain("<footer>");
+    expect(html).not.toContain("<header");
+    expect(html).not.toContain("<main");
+    expect(html).not.toContain("<footer");
   });
 
   it("falls back when site.title is an empty string", () => {
