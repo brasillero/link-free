@@ -49,6 +49,7 @@ describe("renderSocials", () => {
     expect(html).toContain('rel="me"');
     expect(html).toContain('aria-label="GitHub"');
     expect(html).toContain("<svg");
+    expect(html).toContain("focus-visible:text-accent");
   });
 
   it("escapes label and url", () => {
@@ -70,12 +71,12 @@ describe("renderLink", () => {
       description: "my writing",
     });
     expect(withDesc).toBe(
-      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent">Blog</a><small class="mt-1 block text-center text-sm text-muted">my writing</small></li>',
+      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent focus-visible:scale-[1.02] focus-visible:text-accent">Blog</a><small class="mt-1 block text-center text-sm text-muted">my writing</small></li>',
     );
 
     const noDesc = renderLink({ component: "link", title: "Blog", url: "https://b.dev" });
     expect(noDesc).toBe(
-      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent">Blog</a></li>',
+      '<li><a href="https://b.dev" class="lf-link block rounded-card bg-surface px-5 py-4 text-center font-medium text-ink shadow-sm transition hover:scale-[1.02] hover:text-accent focus-visible:scale-[1.02] focus-visible:text-accent">Blog</a></li>',
     );
   });
 

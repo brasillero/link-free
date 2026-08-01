@@ -1,18 +1,20 @@
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { build } from "./engine/build.js";
+import { resolveOutDir } from "./outPath.js";
 
-const USAGE = "Usage: link-free build [--dir <path>] [--out <path>]";
+const USAGE =
+  "Usage: link-free build [--dir <path>] [--out <path>]\n  (default output: <dir>/dist)";
 
 async function main(): Promise<void> {
-  let values: { dir: string; out: string; help: boolean };
+  let values: { dir: string; out?: string | undefined; help: boolean };
   let positionals: string[];
   try {
     ({ values, positionals } = parseArgs({
       allowPositionals: true,
       options: {
         dir: { type: "string", default: "." },
-        out: { type: "string", default: "dist" },
+        out: { type: "string" },
         help: { type: "boolean", short: "h", default: false },
       },
     }));
@@ -34,7 +36,8 @@ async function main(): Promise<void> {
   }
 
   try {
-    const outPath = await build(resolve(values.dir), resolve(values.out));
+    const dir = resolve(values.dir);
+    const outPath = await build(dir, resolveOutDir(dir, values.out));
     console.log(`built ${outPath}`);
   } catch (err) {
     console.error(`error: ${(err as Error).message}`);
