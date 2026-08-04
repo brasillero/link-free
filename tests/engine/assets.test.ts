@@ -105,4 +105,31 @@ describe("processAssets", () => {
     const result = await processAssets(sections, dir, out);
     expect(result.theme.tokens?.backgroundImage).toBe("assets/avatar.png");
   });
+
+  it("rejects a directory referenced as an asset", async () => {
+    await mkdir(join(dir, "adir"));
+    const sections: Sections = {
+      ...base,
+      header: [{ component: "profile", image: "./adir", name: "Jane" }],
+    };
+    await expect(processAssets(sections, dir, out)).rejects.toThrow(/file not found/);
+  });
+
+  it("leaves no assets behind when a later reference fails", async () => {
+    const sections: Sections = {
+      ...base,
+      site: { ogImage: "./avatar.png" },
+      header: [{ component: "profile", image: "./missing.png", name: "Jane" }],
+    };
+    await expect(processAssets(sections, dir, out)).rejects.toThrow(/file not found/);
+    await expect(readdir(join(out, "assets"))).rejects.toThrow();
+  });
+
+  it("treats a Windows drive-letter path as local (clear error, not passthrough)", async () => {
+    const sections: Sections = {
+      ...base,
+      header: [{ component: "profile", image: "C:\\img\\a.png", name: "Jane" }],
+    };
+    await expect(processAssets(sections, dir, out)).rejects.toThrow(/outside the config directory|file not found/);
+  });
 });

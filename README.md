@@ -44,6 +44,9 @@ inlined with zero JavaScript — output is a single HTML page, plus an
 
 Image fields (`profile.image`, `ogImage`, `backgroundImage`) accept either an
 absolute URL or a local path relative to your config directory (e.g.
-`./avatar.png`). Local files are copied into `dist/assets/` at build time and
-references are rewritten automatically. A missing file or a path outside the
-config directory fails the build with a clear error.
+`./avatar.png`). Local files are copied into an `assets/` folder inside the
+output directory at build time and references are rewritten automatically. A
+missing file or a path outside the config directory fails the build with a
+clear error. A local `ogImage` is rewritten to an absolute URL when
+`canonicalUrl` is set; without it the `og:image` stays relative, which social
+crawlers cannot fetch.
