@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SECTION_COMPONENTS } from "../../src/engine/loadSections.js";
 import {
   bodyFileSchema,
   footerFileSchema,
@@ -12,6 +13,19 @@ const socials = {
 };
 const link = { component: "link", title: "Blog", url: "https://b.dev" };
 const text = { component: "text", text: "hi" };
+
+const FILE_SCHEMAS = {
+  header: headerFileSchema,
+  body: bodyFileSchema,
+  footer: footerFileSchema,
+} as const;
+
+const BLOCK_FIXTURES = {
+  profile,
+  socials,
+  link,
+  text,
+} as const;
 
 describe("per-section file schemas", () => {
   it("header accepts profile and socials, rejects link and text", () => {
@@ -31,9 +45,15 @@ describe("per-section file schemas", () => {
   });
 
   it("matches the SECTION_COMPONENTS rule from loadSections", () => {
-    expect(headerFileSchema.safeParse({ blocks: [profile] }).success).toBe(true);
-    expect(headerFileSchema.safeParse({ blocks: [link] }).success).toBe(false);
-    expect(bodyFileSchema.safeParse({ blocks: [text] }).success).toBe(false);
-    expect(footerFileSchema.safeParse({ blocks: [socials] }).success).toBe(false);
+    for (const [section, allowed] of Object.entries(SECTION_COMPONENTS)) {
+      const schema = FILE_SCHEMAS[section as keyof typeof FILE_SCHEMAS];
+      for (const [component, fixture] of Object.entries(BLOCK_FIXTURES)) {
+        const shouldPass = allowed.includes(component);
+        expect(
+          schema.safeParse({ blocks: [fixture] }).success,
+          `${section} ${shouldPass ? "accepts" : "rejects"} ${component}`,
+        ).toBe(shouldPass);
+      }
+    }
   });
 });

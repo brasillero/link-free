@@ -15,7 +15,7 @@ const SECTION_NAMES = ["header", "body", "footer"] as const;
 type SectionName = (typeof SECTION_NAMES)[number];
 
 /** Which components each section file accepts (spec §4.7). */
-const SECTION_COMPONENTS: Record<SectionName, string[]> = {
+export const SECTION_COMPONENTS: Record<SectionName, string[]> = {
   header: ["profile", "socials"],
   body: ["link"],
   footer: ["text"],

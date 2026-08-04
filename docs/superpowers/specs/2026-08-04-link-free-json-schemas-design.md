@@ -26,8 +26,8 @@ Each generated document carries a stable `$id` of the form `https://raw.githubus
 
 - New dev dependency: `zod-to-json-schema` (dev-only; never ships in the CLI bundle).
 - New source exports in `src/schema/files.ts`: `headerFileSchema`, `bodyFileSchema`, `footerFileSchema` — proper `z.object({ blocks: z.array(z.discriminatedUnion("component", [...])) })` schemas built from the existing block schemas. These are richer than the loose `sectionFileSchema` used at runtime (which intentionally stays loose so loadSections can produce curated per-block errors). They exist for generation and documentation, and they encode the same per-section component rules as `SECTION_COMPONENTS`.
-- New script `scripts/generate-schemas.mjs`: converts the five schemas via `zod-to-json-schema`, injects the `$id` fields, writes the files with 2-space formatting.
-- New package.json script: `"schemas": "node scripts/generate-schemas.mjs"`.
+- New script `scripts/generate-schemas.ts`: converts the five schemas via `zod-to-json-schema`, injects the `$id` fields, writes the files with 2-space formatting.
+- New package.json script: `"schemas": "vite-node scripts/generate-schemas.ts"` (`vite-node` is a dev dependency).
 
 ## 4. Drift guard
 
