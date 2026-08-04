@@ -34,10 +34,11 @@ individual design tokens:
 ```
 
 Presets: `light` (default), `dark`, `minimal`. Token overrides (all optional):
-`accent`, `background`, `backgroundImage` (URL), `surface`, `text` (any CSS color),
+`accent`, `background`, `backgroundImage` (URL or local path), `surface`, `text` (any CSS color),
 `font` (`system` | `serif` | `mono`), `radius` / `avatarRadius` (`sm` | `md` |
-`lg` | `full`), `density` (`compact` | `comfortable`). Output stays a single
-self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.
+`lg` | `full`), `density` (`compact` | `comfortable`). CSS is precompiled and
+inlined with zero JavaScript — output is a single HTML page, plus an
+`assets/` folder when you reference local images (see below).
 
 ## Local assets
 
