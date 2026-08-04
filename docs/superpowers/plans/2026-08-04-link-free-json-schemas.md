@@ -21,10 +21,10 @@
 - Create: `schemas/link.site.schema.json` + 4 more (generated)
 - Test: `tests/schema/fileSchemas.test.ts`, `tests/schema/drift.test.ts`
 
-- [ ] **Step 1: Install the dev dependency**
+- [ ] **Step 1: Install the dev dependencies**
 
-Run: `pnpm add -D zod-to-json-schema`
-Expected: v3.x lands in devDependencies. If it pulls zod v4 as a peer, stop and report BLOCKED (we are on zod v3.25).
+Run: `pnpm add -D zod-to-json-schema vite-node@^1.6.1`
+Expected: zod-to-json-schema v3.x and vite-node 1.6.x (matching vitest 1.6.1's line) land in devDependencies. vite-node must be an explicit devDep: pnpm does not hoist transitive dependency bins, so vitest's bundled copy is not callable directly. If zod-to-json-schema pulls zod v4 as a peer, stop and report BLOCKED (project is on zod v3.25).
 
 - [ ] **Step 2: Write the failing consistency test** — `tests/schema/fileSchemas.test.ts`:
 
