@@ -39,7 +39,9 @@ describe("renderPage", () => {
     expect(html).toContain("<main");
     expect(html).toContain("<ul");
     expect(html).toContain("<footer");
-    expect(html).not.toContain("<script");
+    // Only script tag is the ld+json structured-data block — no executable JS.
+    expect(html.match(/<script/g)).toHaveLength(1);
+    expect(html).toContain('<script type="application/ld+json">');
   });
 
   it("omits sections whose file was absent", () => {
@@ -137,5 +139,20 @@ describe("renderPage", () => {
   it("emits preset extra css for the minimal theme", () => {
     const html = renderPage({ ...full, theme: { theme: "minimal" } });
     expect(html).toContain(".lf-link{background:transparent;text-decoration:underline;box-shadow:none}");
+  });
+
+  it("includes a parseable JSON-LD block when a profile exists", () => {
+    const html = renderPage(full);
+    const match = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
+    expect(match, "JSON-LD block present").not.toBeNull();
+    const data = JSON.parse(match![1]);
+    expect(data["@type"]).toBe("ProfilePage");
+    expect(data.mainEntity.name).toBe("Jane");
+    expect(data.mainEntity.sameAs).toEqual(["https://github.com/jane"]);
+  });
+
+  it("omits JSON-LD when there is no profile block", () => {
+    const html = renderPage({ site: {}, theme: { theme: "light" }, header: null, body: null, footer: null });
+    expect(html).not.toContain("application/ld+json");
   });
 });
