@@ -50,3 +50,19 @@ missing file or a path outside the config directory fails the build with a
 clear error. A local `ogImage` is rewritten to an absolute URL when
 `canonicalUrl` is set; without it the `og:image` stays relative, which social
 crawlers cannot fetch.
+
+## Editor autocomplete
+
+JSON Schemas for every config file are published with the repo. Add a
+`"$schema"` line at the top of a config file for autocomplete and inline
+validation in VS Code and other editors:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/brasillero/link-free/master/schemas/link.header.schema.json",
+  "blocks": []
+}
+```
+
+Available schemas: `link.site`, `link.header`, `link.body`, `link.footer`,
+`link.free.config` (same base URL, ending in `.schema.json`).
