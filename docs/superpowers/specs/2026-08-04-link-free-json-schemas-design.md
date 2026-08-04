@@ -33,6 +33,8 @@ Each generated document carries a stable `$id` of the form `https://raw.githubus
 
 A vitest test runs the generator into a temp directory and asserts the output is byte-identical to the tracked `schemas/` files. If someone changes a zod schema without regenerating, the test fails. (Running the generator rather than diffing `git status` keeps the test hermetic.)
 
+**Strictness note:** the generated schemas emit `additionalProperties: false` (zod-to-json-schema's default), which is stricter than the runtime, where unknown keys are stripped silently. This is intentional: the editor should flag typos, while the runtime stays forward-compatible with configs written against future versions.
+
 ## 5. Per-section consistency guard
 
 A test asserts each exported file schema accepts/rejects the same component sets as `SECTION_COMPONENTS` (e.g. `headerFileSchema` rejects a `link` block, accepts `profile`/`socials`), so the generation-side schemas can't drift from the runtime rule.
