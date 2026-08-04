@@ -17,7 +17,8 @@
     "build": "pnpm css && tsup",
     "typecheck": "pnpm css && tsc --noEmit",
     "test": "pnpm css && vitest run",
-    "dev": "pnpm css && vitest"
+    "dev": "pnpm css && vitest",
+    "schemas": "vite-node scripts/generate-schemas.ts"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
@@ -25,7 +26,9 @@
     "tailwindcss": "^4.3.3",
     "tsup": "^8.1.0",
     "typescript": "^5.5.4",
+    "vite-node": "^1.6.1",
     "vitest": "^1.6.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.25.2"
   }
 }
