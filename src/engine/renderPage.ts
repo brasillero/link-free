@@ -3,6 +3,7 @@ import { escapeHtml } from "../escapeHtml.js";
 import { resolveTheme } from "../theme/resolveTheme.js";
 import { stylesCss } from "../theme/styles.css.js";
 import type { Sections } from "./loadSections.js";
+import { buildJsonLd } from "./jsonld.js";
 
 function findProp(blocks: ValidatedBlock[] | null, component: string, prop: string): string | undefined {
   const block = blocks?.find((b) => b.component === component);
@@ -42,6 +43,8 @@ export function renderPage(sections: Sections): string {
     `  <style>${resolved.rootCss}${resolved.extraCss ? `\n${resolved.extraCss}` : ""}</style>`,
   ];
 
+  const jsonLd = buildJsonLd(sections);
+
   // Body links are wrapped in a real list so they are crawlable without JS.
   const bodyHtml =
     body && body.length > 0
@@ -54,6 +57,7 @@ export function renderPage(sections: Sections): string {
     "<head>",
     ...meta,
     ...styles,
+    ...(jsonLd ? [`  ${jsonLd}`] : []),
     "</head>",
     '<body class="lf-page flex min-h-screen flex-col items-center font-sans text-ink">',
     wrapSection("header", "flex flex-col items-center gap-3 px-6 pt-16", header),
