@@ -27,7 +27,7 @@ For each local reference found in the three known locations:
 
 1. Resolve against `dir`. Missing file → hard `LoadError` naming the config location and the path checked, e.g. `link.header.json → blocks[0].image: file not found: ./avatar.png (resolved to <abs path>)`. Exit 1, no partial output.
 2. Copy to `<outDir>/assets/<basename>`.
-3. Rewrite the value in the loaded sections to `assets/<basename>` (a root-relative-to-output path used verbatim in the emitted HTML).
+3. Rewrite the value in the loaded sections to `assets/<basename>` (a path relative to the output directory, used verbatim in the emitted HTML). Exception: social crawlers require absolute `og:image` URLs, so when the reference is `site.ogImage` **and** `site.canonicalUrl` is set, the rewritten value is `<canonicalUrl>/assets/<basename>` instead.
 
 **Collision rules:**
 
