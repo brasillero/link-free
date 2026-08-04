@@ -28,8 +28,9 @@ describe("themeConfigSchema", () => {
     expect(() => themeConfigSchema.parse({ tokens: { radius: "huge" } })).toThrow();
   });
 
-  it("rejects a non-URL backgroundImage", () => {
-    expect(() => themeConfigSchema.parse({ tokens: { backgroundImage: "not-a-url" } })).toThrow();
+  it("accepts a local backgroundImage path", () => {
+    const parsed = themeConfigSchema.parse({ tokens: { backgroundImage: "./bg.jpg" } });
+    expect(parsed.tokens?.backgroundImage).toBe("./bg.jpg");
   });
 
   it("rejects an empty color token", () => {

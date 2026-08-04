@@ -25,10 +25,13 @@ describe("profileBlockSchema", () => {
     expect("futureField" in parsed).toBe(false);
   });
 
-  it("rejects an invalid image URL", () => {
-    expect(() =>
-      profileBlockSchema.parse({ component: "profile", image: "not-a-url", name: "Jane" }),
-    ).toThrow();
+  it("accepts a local image path", () => {
+    const parsed = profileBlockSchema.parse({
+      component: "profile",
+      image: "./avatar.png",
+      name: "Jane",
+    });
+    expect(parsed.image).toBe("./avatar.png");
   });
 
   it("rejects a missing name", () => {
