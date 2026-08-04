@@ -12,7 +12,7 @@
 The engine/core only: read config files, validate them, render a single unstyled-but-semantic HTML page.
 
 - No styling/theming (documented as future scope, section 7).
-- No asset copying — image URLs pass through verbatim.
+- Asset copying: shipped, see 2026-08-01 asset-copying spec.
 - Mobile-first semantic structure; CSS comes later with theming.
 
 ## 3. CLI
@@ -208,6 +208,6 @@ No snapshot tests — explicit assertions on semantic structure, so tests double
 1. **Theming** via a separate `link.free.config.json` (or `.ts`): a type-safe contract to customize component appearance — colors, fonts, layout variants, background image. A theme = alternative renderers registered under the same component names, which the registry architecture already supports.
 2. **TS/JS config modules** (`link.header.ts` exporting a typed object) as an alternative to JSON.
 3. **JSON Schema generation** from the zod schemas, for editor autocomplete on the JSON files.
-4. **Asset copying**: local image paths copied into `dist` and rewritten in output.
+4. ~~**Asset copying**: local image paths copied into `dist` and rewritten in output.~~ Shipped — see 2026-08-01 asset-copying spec.
 5. **SEO extras**: JSON-LD structured data (`ProfilePage`), favicon, `theme-color`, sitemap.
 6. **More components**: headings, dividers, embedded media, etc. — registered the same way as the MVP four.

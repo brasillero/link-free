@@ -81,4 +81,27 @@ describe("build", () => {
     await expect(build(dir, join(out, "dist"))).rejects.toThrow(/blocks\[0\]\.url/);
     await expect(readFile(join(out, "dist", "index.html"), "utf8")).rejects.toThrow();
   });
+
+  it("copies local assets and rewrites references in the output", async () => {
+    await write("link.header.json", {
+      blocks: [{ component: "profile", image: "./avatar.png", name: "Jane" }],
+    });
+    await writeFile(join(dir, "avatar.png"), "fake-png-bytes");
+
+    const outPath = await build(dir, join(out, "dist"));
+    const html = await readFile(outPath, "utf8");
+
+    expect(html).toContain('src="assets/avatar.png"');
+    await expect(readFile(join(out, "dist", "assets", "avatar.png"), "utf8")).resolves.toBe(
+      "fake-png-bytes",
+    );
+  });
+
+  it("fails without writing index.html when a referenced asset is missing", async () => {
+    await write("link.header.json", {
+      blocks: [{ component: "profile", image: "./missing.png", name: "Jane" }],
+    });
+    await expect(build(dir, join(out, "dist"))).rejects.toThrow(/file not found/);
+    await expect(readFile(join(out, "dist", "index.html"), "utf8")).rejects.toThrow();
+  });
 });

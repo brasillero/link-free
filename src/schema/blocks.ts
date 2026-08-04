@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assetRefSchema } from "./common.js";
 
 export const ICON_NAMES = [
   "github",
@@ -16,7 +17,7 @@ export type IconName = (typeof ICON_NAMES)[number];
 export const profileBlockSchema = z
   .object({
     component: z.literal("profile"),
-    image: z.string().url(),
+    image: assetRefSchema,
     name: z.string().min(1),
     bio: z.string().optional(),
   })

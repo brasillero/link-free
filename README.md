@@ -34,7 +34,19 @@ individual design tokens:
 ```
 
 Presets: `light` (default), `dark`, `minimal`. Token overrides (all optional):
-`accent`, `background`, `backgroundImage` (URL), `surface`, `text` (any CSS color),
+`accent`, `background`, `backgroundImage` (URL or local path), `surface`, `text` (any CSS color),
 `font` (`system` | `serif` | `mono`), `radius` / `avatarRadius` (`sm` | `md` |
-`lg` | `full`), `density` (`compact` | `comfortable`). Output stays a single
-self-contained HTML file — CSS is precompiled and inlined, zero JavaScript.
+`lg` | `full`), `density` (`compact` | `comfortable`). CSS is precompiled and
+inlined with zero JavaScript — output is a single HTML page, plus an
+`assets/` folder when you reference local images (see below).
+
+## Local assets
+
+Image fields (`profile.image`, `ogImage`, `backgroundImage`) accept either an
+absolute URL or a local path relative to your config directory (e.g.
+`./avatar.png`). Local files are copied into an `assets/` folder inside the
+output directory at build time and references are rewritten automatically. A
+missing file or a path outside the config directory fails the build with a
+clear error. A local `ogImage` is rewritten to an absolute URL when
+`canonicalUrl` is set; without it the `og:image` stays relative, which social
+crawlers cannot fetch.

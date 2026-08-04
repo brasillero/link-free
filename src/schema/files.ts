@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PRESET_NAMES } from "../theme/presets.js";
+import { assetRefSchema } from "./common.js";
 
 export const siteFileSchema = z
   .object({
@@ -7,7 +8,7 @@ export const siteFileSchema = z
     description: z.string().optional(),
     lang: z.string().optional(),
     canonicalUrl: z.string().url().optional(),
-    ogImage: z.string().url().optional(),
+    ogImage: assetRefSchema.optional(),
   })
   .strip();
 
@@ -37,7 +38,7 @@ export const themeConfigSchema = z
       .object({
         accent: colorToken.optional(),
         background: colorToken.optional(),
-        backgroundImage: z.string().url().regex(/^[^<]+$/, "must not contain '<'").optional(),
+        backgroundImage: assetRefSchema.optional(),
         surface: colorToken.optional(),
         text: colorToken.optional(),
         font: z.enum(["system", "serif", "mono"]).optional(),

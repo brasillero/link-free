@@ -2,7 +2,7 @@
   "blocks": [
     {
       "component": "profile",
-      "image": "https://example.com/avatar.png",
+      "image": "./avatar.png",
       "name": "Jane Doe",
       "bio": "Engineer, writer, coffee enthusiast."
     },
