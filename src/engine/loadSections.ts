@@ -1,13 +1,8 @@
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  sectionFileSchema,
-  siteFileSchema,
-  themeConfigSchema,
-  type SiteFile,
-  type ThemeConfig,
-} from "../schema/files.js";
+import { readdir } from "node:fs/promises";
+import { sectionFileSchema, siteFileSchema, themeConfigSchema, type SiteFile, type ThemeConfig } from "../schema/files.js";
 import { COMPONENT_NAMES, registry, type ValidatedBlock } from "../components/registry.js";
+import { loadModule } from "./loadModule.js";
 
 export class LoadError extends Error {}
 
@@ -29,23 +24,8 @@ export interface Sections {
   footer: ValidatedBlock[] | null;
 }
 
-async function readJsonFile(path: string): Promise<unknown | null> {
-  let raw: string;
-  try {
-    raw = await readFile(path, "utf8");
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null; // missing file → section omitted
-    throw err; // unexpected I/O error — let it surface as-is
-  }
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    throw new LoadError(`${path}: invalid JSON — ${(err as Error).message}`);
-  }
-}
-
 function validateBlocks(raw: unknown, section: SectionName): ValidatedBlock[] {
-  const fileName = `link.${section}.json`;
+  const fileName = `${section}.link.ts`;
   const wrapper = sectionFileSchema.safeParse(raw);
   if (!wrapper.success) {
     throw new LoadError(`${fileName}: expected an object with a "blocks" array`);
@@ -73,9 +53,15 @@ function validateBlocks(raw: unknown, section: SectionName): ValidatedBlock[] {
   });
 }
 
+function formatIssues(fileName: string, issues: { path: (string | number)[]; message: string }[]): LoadError {
+  return new LoadError(
+    issues.map((issue) => `${fileName} → ${issue.path.join(".")}: ${issue.message}`).join("\n"),
+  );
+}
+
 export async function loadSections(dir: string): Promise<Sections> {
-  const siteRaw = await readJsonFile(join(dir, "link.site.json"));
-  const themeRaw = await readJsonFile(join(dir, "link.free.config.json"));
+  const siteRaw = await loadModule(join(dir, "site.link.ts"));
+  const themeRaw = await loadModule(join(dir, "config.link.ts"));
 
   const sections: Record<SectionName, ValidatedBlock[] | null> = {
     header: null,
@@ -83,37 +69,37 @@ export async function loadSections(dir: string): Promise<Sections> {
     footer: null,
   };
   for (const name of SECTION_NAMES) {
-    const raw = await readJsonFile(join(dir, `link.${name}.json`));
+    const raw = await loadModule(join(dir, `${name}.link.ts`));
     if (raw != null) {
       sections[name] = validateBlocks(raw, name);
     }
   }
 
-  if (siteRaw == null && themeRaw == null && SECTION_NAMES.every((n) => sections[n] == null)) {
-    throw new LoadError(`no link.*.json files found in ${dir}`);
+  const nothingFound =
+    siteRaw == null && themeRaw == null && SECTION_NAMES.every((n) => sections[n] == null);
+
+  if (nothingFound) {
+    // Migration guard: stale JSON configs get a clear message instead of silence.
+    const entries = await readdir(dir).catch(() => [] as string[]);
+    if (entries.some((e) => /^link\.(site|header|body|footer|free\.config)\.json$/.test(e))) {
+      throw new LoadError(
+        `JSON configs are no longer supported as of v0.2.0 — convert them to <section>.link.ts modules`,
+      );
+    }
+    throw new LoadError(`no *.link.ts config files found in ${dir}`);
   }
 
   let site: SiteFile = {};
   if (siteRaw != null) {
     const parsed = siteFileSchema.safeParse(siteRaw);
-    if (!parsed.success) {
-      const issues = parsed.error.issues
-        .map((issue) => `link.site.json → ${issue.path.join(".")}: ${issue.message}`)
-        .join("\n");
-      throw new LoadError(issues);
-    }
+    if (!parsed.success) throw formatIssues("site.link.ts", parsed.error.issues);
     site = parsed.data;
   }
 
   let theme: ThemeConfig = themeConfigSchema.parse({});
   if (themeRaw != null) {
     const parsed = themeConfigSchema.safeParse(themeRaw);
-    if (!parsed.success) {
-      const issues = parsed.error.issues
-        .map((issue) => `link.free.config.json → ${issue.path.join(".")}: ${issue.message}`)
-        .join("\n");
-      throw new LoadError(issues);
-    }
+    if (!parsed.success) throw formatIssues("config.link.ts", parsed.error.issues);
     theme = parsed.data;
   }
 

@@ -1,15 +1,9 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initProject } from "../../src/engine/init.js";
-import {
-  bodyFileSchema,
-  footerFileSchema,
-  headerFileSchema,
-  siteFileSchema,
-  themeConfigSchema,
-} from "../../src/schema/files.js";
+import { loadSections } from "../../src/engine/loadSections.js";
 
 let dir: string;
 
@@ -21,53 +15,86 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-const FILES = [
-  "link.site.json",
-  "link.header.json",
-  "link.body.json",
-  "link.footer.json",
-  "link.free.config.json",
+const CONFIG_FILES = [
+  "site.link.ts",
+  "header.link.ts",
+  "body.link.ts",
+  "footer.link.ts",
+  "config.link.ts",
 ];
 
 describe("initProject", () => {
-  it("creates all five config files and returns their names", async () => {
-    const created = await initProject(dir, {});
-    expect(created.sort()).toEqual([...FILES].sort());
-    for (const name of FILES) {
-      const raw = await readFile(join(dir, name), "utf8");
-      const parsed = JSON.parse(raw);
-      expect(Object.keys(parsed)[0], `${name} starts with $schema`).toBe("$schema");
-    }
+  it("creates the target directory when it does not exist", async () => {
+    const nested = join(dir, "fresh", "site");
+    const result = await initProject(nested, {});
+    expect(result.created).toContain("package.json");
+    expect(result.created).toContain("header.link.ts");
   });
 
-  it("starter content passes the real schemas", async () => {
+  it("scaffolds package.json, tsconfig, and five typed config files", async () => {
+    const result = await initProject(dir, {});
+    expect(result.created.sort()).toEqual(
+      [...CONFIG_FILES, "package.json", "tsconfig.json"].sort(),
+    );
+
+    const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8"));
+    expect(pkg.private).toBe(true);
+    expect(pkg.devDependencies["link-free"]).toBe("^0.2.0");
+    expect(pkg.scripts.build).toBe("link-free build");
+
+    const header = await readFile(join(dir, "header.link.ts"), "utf8");
+    expect(header).toContain('import type { HeaderFile } from "link-free";');
+    expect(header).toContain("satisfies HeaderFile");
+
+    const config = await readFile(join(dir, "config.link.ts"), "utf8");
+    expect(config).toContain("satisfies ThemeConfig");
+  });
+
+  it("uses a sanitized directory name for package.json", async () => {
+    const nested = join(dir, "My Cool Site");
+    await mkdir(nested);
+    const result = await initProject(nested, {});
+    const pkg = JSON.parse(await readFile(join(nested, "package.json"), "utf8"));
+    expect(pkg.name).toBe("my-cool-site");
+    expect(result.created).toContain("package.json");
+  });
+
+  it("never overwrites an existing package.json or tsconfig.json", async () => {
+    await writeFile(join(dir, "package.json"), `{ "name": "keep-me" }`);
+    await writeFile(join(dir, "tsconfig.json"), `{ "compilerOptions": {} }`);
+    const result = await initProject(dir, {});
+    expect(result.skipped.sort()).toEqual(["package.json", "tsconfig.json"]);
+    const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8"));
+    expect(pkg.name).toBe("keep-me");
+    expect(result.created.sort()).toEqual([...CONFIG_FILES].sort());
+  });
+
+  it("aborts on existing config files, writing nothing, unless forced", async () => {
+    await writeFile(join(dir, "header.link.ts"), `export default {}`);
+    await expect(initProject(dir, {})).rejects.toThrow(
+      /config files already exist: header\.link\.ts \(use --force to overwrite\)/,
+    );
+    await expect(readFile(join(dir, "body.link.ts"), "utf8")).rejects.toThrow();
+
+    const result = await initProject(dir, { force: true });
+    expect(result.created).toContain("header.link.ts");
+  });
+
+  it("lists multiple existing config files in the error", async () => {
+    await writeFile(join(dir, "site.link.ts"), `export default {}`);
+    await writeFile(join(dir, "body.link.ts"), `export default {}`);
+    await expect(initProject(dir, {})).rejects.toThrow(
+      /config files already exist: site\.link\.ts, body\.link\.ts/,
+    );
+  });
+
+  it("starter configs load and validate through the real engine", async () => {
     await initProject(dir, {});
-    siteFileSchema.parse(JSON.parse(await readFile(join(dir, "link.site.json"), "utf8")));
-    headerFileSchema.parse(JSON.parse(await readFile(join(dir, "link.header.json"), "utf8")));
-    bodyFileSchema.parse(JSON.parse(await readFile(join(dir, "link.body.json"), "utf8")));
-    footerFileSchema.parse(JSON.parse(await readFile(join(dir, "link.footer.json"), "utf8")));
-    themeConfigSchema.parse(JSON.parse(await readFile(join(dir, "link.free.config.json"), "utf8")));
-  });
-
-  it("aborts on existing files, writing nothing, unless forced", async () => {
-    await writeFile(join(dir, "link.site.json"), "{}");
-    await expect(initProject(dir, {})).rejects.toThrow(
-      /config files already exist: link\.site\.json \(use --force to overwrite\)/,
-    );
-    // nothing new written
-    await expect(readFile(join(dir, "link.header.json"), "utf8")).rejects.toThrow();
-
-    const created = await initProject(dir, { force: true });
-    expect(created).toHaveLength(5);
-    const site = JSON.parse(await readFile(join(dir, "link.site.json"), "utf8"));
-    expect(site.title).toBe("Your Name — Links");
-  });
-
-  it("lists multiple existing files in the error", async () => {
-    await writeFile(join(dir, "link.site.json"), "{}");
-    await writeFile(join(dir, "link.body.json"), "{}");
-    await expect(initProject(dir, {})).rejects.toThrow(
-      /config files already exist: link\.site\.json, link\.body\.json/,
-    );
+    const sections = await loadSections(dir);
+    expect(sections.site.title).toBe("Your Name — Links");
+    expect(sections.header).toHaveLength(2);
+    expect(sections.body).toHaveLength(1);
+    expect(sections.footer).toHaveLength(1);
+    expect(sections.theme.theme).toBe("light");
   });
 });
