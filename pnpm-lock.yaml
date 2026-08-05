@@ -11,6 +11,9 @@ importers:
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@tailwindcss/cli':
         specifier: ^4.3.3
@@ -30,9 +33,6 @@ importers:
       vitest:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@20.19.43)(lightningcss@1.32.0)
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
 
 packages:
 

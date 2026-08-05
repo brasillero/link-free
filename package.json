@@ -49,10 +49,10 @@
     "tailwindcss": "^4.3.3",
     "tsup": "^8.1.0",
     "typescript": "^5.5.4",
-    "vitest": "^1.6.0",
-    "zod": "^3.25.76"
+    "vitest": "^1.6.0"
   },
   "dependencies": {
-    "jiti": "^2.7.0"
+    "jiti": "^2.7.0",
+    "zod": "^3.25.76"
   }
 }
