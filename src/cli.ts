@@ -1,13 +1,14 @@
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { build } from "./engine/build.js";
+import { initProject } from "./engine/init.js";
 import { resolveOutDir } from "./outPath.js";
 
 const USAGE =
-  "Usage: link-free build [--dir <path>] [--out <path>]\n  (default output: <dir>/dist)";
+  "Usage: link-free <command>\n  link-free build [--dir <path>] [--out <path>]\n  link-free init [--dir <path>] [--force]";
 
 async function main(): Promise<void> {
-  let values: { dir: string; out?: string | undefined; help: boolean };
+  let values: { dir: string; out?: string | undefined; help: boolean; force: boolean };
   let positionals: string[];
   try {
     ({ values, positionals } = parseArgs({
@@ -16,6 +17,7 @@ async function main(): Promise<void> {
         dir: { type: "string", default: "." },
         out: { type: "string" },
         help: { type: "boolean", short: "h", default: false },
+        force: { type: "boolean", default: false },
       },
     }));
   } catch (err) {
@@ -30,9 +32,22 @@ async function main(): Promise<void> {
     console.log(USAGE);
     return;
   }
-  if (command !== "build" || positionals.length > 1) {
+  if ((command !== "build" && command !== "init") || positionals.length > 1) {
     console.error(USAGE);
     process.exit(1);
+  }
+
+  if (command === "init") {
+    try {
+      const created = await initProject(resolve(values.dir), { force: values.force });
+      console.log(`created ${created.length} config files in ${resolve(values.dir)}:`);
+      for (const name of created) console.log(`  ${name}`);
+      console.log("\nedit them, then run: link-free build");
+    } catch (err) {
+      console.error(`error: ${(err as Error).message}`);
+      process.exit(1);
+    }
+    return;
   }
 
   try {

@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initProject } from "../../src/engine/init.js";
-import { headerFileSchema, siteFileSchema, themeConfigSchema } from "../../src/schema/files.js";
+import {
+  bodyFileSchema,
+  footerFileSchema,
+  headerFileSchema,
+  siteFileSchema,
+  themeConfigSchema,
+} from "../../src/schema/files.js";
 
 let dir: string;
 
@@ -38,6 +44,8 @@ describe("initProject", () => {
     await initProject(dir, {});
     siteFileSchema.parse(JSON.parse(await readFile(join(dir, "link.site.json"), "utf8")));
     headerFileSchema.parse(JSON.parse(await readFile(join(dir, "link.header.json"), "utf8")));
+    bodyFileSchema.parse(JSON.parse(await readFile(join(dir, "link.body.json"), "utf8")));
+    footerFileSchema.parse(JSON.parse(await readFile(join(dir, "link.footer.json"), "utf8")));
     themeConfigSchema.parse(JSON.parse(await readFile(join(dir, "link.free.config.json"), "utf8")));
   });
 

@@ -6,9 +6,13 @@ get a single static, semantic, SEO-first HTML page with zero JavaScript.
 ## Usage
 
 ```sh
-npx link-free build            # scan cwd, write dist/index.html
+npx link-free init             # scaffold the config files in your project
+npx link-free build            # generate dist/index.html
 npx link-free build --dir . --out dist
 ```
+
+`init` writes starter versions of every config file (with editor `$schema`
+URLs) and refuses to overwrite existing ones unless you pass `--force`.
 
 Config files (all optional; missing file = section omitted):
 
