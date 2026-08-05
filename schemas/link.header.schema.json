@@ -1,0 +1,95 @@
+{
+  "type": "object",
+  "properties": {
+    "blocks": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "component": {
+                "type": "string",
+                "const": "profile"
+              },
+              "image": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^<]+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "bio": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "component",
+              "image",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "component": {
+                "type": "string",
+                "const": "socials"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "icon": {
+                      "type": "string",
+                      "enum": [
+                        "github",
+                        "x",
+                        "instagram",
+                        "linkedin",
+                        "youtube",
+                        "tiktok",
+                        "mastodon",
+                        "website"
+                      ]
+                    },
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "icon",
+                    "url",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "component",
+              "links"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "blocks"
+  ],
+  "additionalProperties": false,
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/brasillero/link-free/master/schemas/link.header.schema.json"
+}

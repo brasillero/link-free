@@ -6,9 +6,13 @@ get a single static, semantic, SEO-first HTML page with zero JavaScript.
 ## Usage
 
 ```sh
-npx link-free build            # scan cwd, write dist/index.html
+npx link-free init             # scaffold the config files in your project
+npx link-free build            # generate dist/index.html
 npx link-free build --dir . --out dist
 ```
+
+`init` writes starter versions of every config file (with editor `$schema`
+URLs) and refuses to overwrite existing ones unless you pass `--force`.
 
 Config files (all optional; missing file = section omitted):
 
@@ -50,3 +54,19 @@ missing file or a path outside the config directory fails the build with a
 clear error. A local `ogImage` is rewritten to an absolute URL when
 `canonicalUrl` is set; without it the `og:image` stays relative, which social
 crawlers cannot fetch.
+
+## Editor autocomplete
+
+JSON Schemas for every config file are published with the repo. Add a
+`"$schema"` line at the top of a config file for autocomplete and inline
+validation in VS Code and other editors:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/brasillero/link-free/master/schemas/link.header.schema.json",
+  "blocks": []
+}
+```
+
+Available schemas: `link.site`, `link.header`, `link.body`, `link.footer`,
+`link.free.config` (same base URL, ending in `.schema.json`).

@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { PRESET_NAMES } from "../theme/presets.js";
+import {
+  linkBlockSchema,
+  profileBlockSchema,
+  socialsBlockSchema,
+  textBlockSchema,
+} from "./blocks.js";
 import { assetRefSchema } from "./common.js";
 
 export const siteFileSchema = z
@@ -17,6 +23,23 @@ export type SiteFile = z.infer<typeof siteFileSchema>;
 /** Loose wrapper: per-block validation happens in loadSections via the registry. */
 export const sectionFileSchema = z.object({
   blocks: z.array(z.record(z.unknown())),
+});
+
+/**
+ * Per-section file schemas: richer than sectionFileSchema (which stays loose
+ * at runtime so loadSections can emit curated per-block errors). Used for
+ * JSON Schema generation and editor documentation.
+ */
+export const headerFileSchema = z.object({
+  blocks: z.array(z.discriminatedUnion("component", [profileBlockSchema, socialsBlockSchema])),
+});
+
+export const bodyFileSchema = z.object({
+  blocks: z.array(z.discriminatedUnion("component", [linkBlockSchema])),
+});
+
+export const footerFileSchema = z.object({
+  blocks: z.array(z.discriminatedUnion("component", [textBlockSchema])),
 });
 
 const colorToken = z.string().min(1).regex(/^[^<]+$/, "must not contain '<'");
