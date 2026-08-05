@@ -53,7 +53,7 @@ describe("processAssets", () => {
       header: [{ component: "profile", image: "./nope.png", name: "Jane" }],
     };
     await expect(processAssets(sections, dir, out)).rejects.toThrow(
-      /link\.header\.json → blocks\[0\]\.image: file not found: \.\/nope\.png/,
+      /header\.link\.ts → blocks\[0\]\.image: file not found: \.\/nope\.png/,
     );
   });
 

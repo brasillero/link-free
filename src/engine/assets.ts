@@ -66,7 +66,7 @@ export async function processAssets(
 
   const site = { ...sections.site };
   if (site.ogImage) {
-    const rewritten = await locate(site.ogImage, "link.site.json → ogImage");
+    const rewritten = await locate(site.ogImage, "site.link.ts → ogImage");
     site.ogImage =
       !isRemote(site.ogImage) && site.canonicalUrl
         ? `${site.canonicalUrl.replace(/\/$/, "")}/${rewritten}`
@@ -80,7 +80,7 @@ export async function processAssets(
   if (theme.tokens?.backgroundImage) {
     theme.tokens.backgroundImage = await locate(
       theme.tokens.backgroundImage,
-      "link.free.config.json → tokens.backgroundImage",
+      "config.link.ts → tokens.backgroundImage",
     );
   }
 
@@ -88,7 +88,7 @@ export async function processAssets(
     ? await Promise.all(
         sections.header.map(async (block, i) =>
           block.component === "profile" && typeof block.image === "string"
-            ? { ...block, image: await locate(block.image, `link.header.json → blocks[${i}].image`) }
+            ? { ...block, image: await locate(block.image, `header.link.ts → blocks[${i}].image`) }
             : block,
         ),
       )
