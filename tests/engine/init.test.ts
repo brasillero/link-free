@@ -23,6 +23,13 @@ const CONFIG_FILES = [
 ];
 
 describe("initProject", () => {
+  it("creates the target directory when it does not exist", async () => {
+    const nested = join(dir, "fresh", "site");
+    const result = await initProject(nested, {});
+    expect(result.created).toContain("package.json");
+    expect(result.created).toContain("header.link.ts");
+  });
+
   it("scaffolds package.json, tsconfig, and five typed config files", async () => {
     const result = await initProject(dir, {});
     expect(result.created.sort()).toEqual(

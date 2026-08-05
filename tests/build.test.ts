@@ -17,25 +17,29 @@ afterEach(async () => {
   await rm(out, { recursive: true, force: true });
 });
 
-const write = (name: string, data: unknown) =>
-  writeFile(join(dir, name), JSON.stringify(data), "utf8");
+const write = (name: string, content: string) => writeFile(join(dir, name), content, "utf8");
 
 describe("build", () => {
   it("writes a complete index.html from a full fixture", async () => {
-    await write("link.site.json", { title: "Jane — Links", description: "all my links" });
-    await write("link.header.json", {
-      blocks: [
-        { component: "profile", image: "https://example.com/a.png", name: "Jane" },
-        {
-          component: "socials",
-          links: [{ icon: "github", url: "https://github.com/jane", label: "GitHub" }],
-        },
-      ],
-    });
-    await write("link.body.json", {
-      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
-    });
-    await write("link.footer.json", { blocks: [{ component: "text", text: "© 2026 Jane" }] });
+    await write(
+      "site.link.ts",
+      `export default { title: "Jane — Links", description: "all my links" }`,
+    );
+    await write(
+      "header.link.ts",
+      `export default { blocks: [
+  { component: "profile", image: "https://example.com/a.png", name: "Jane" },
+  { component: "socials", links: [{ icon: "github", url: "https://github.com/jane", label: "GitHub" }] },
+] }`,
+    );
+    await write(
+      "body.link.ts",
+      `export default { blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }] }`,
+    );
+    await write(
+      "footer.link.ts",
+      `export default { blocks: [{ component: "text", text: "© 2026 Jane" }] }`,
+    );
 
     const outPath = await build(dir, join(out, "dist"));
     const html = await readFile(outPath, "utf8");
@@ -49,13 +53,14 @@ describe("build", () => {
   });
 
   it("applies theme config end-to-end", async () => {
-    await write("link.free.config.json", {
-      theme: "dark",
-      tokens: { accent: "#f472b6" },
-    });
-    await write("link.body.json", {
-      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
-    });
+    await write(
+      "config.link.ts",
+      `export default { theme: "dark", tokens: { accent: "#f472b6" } }`,
+    );
+    await write(
+      "body.link.ts",
+      `export default { blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }] }`,
+    );
 
     const outPath = await build(dir, join(out, "dist"));
     const html = await readFile(outPath, "utf8");
@@ -66,9 +71,10 @@ describe("build", () => {
   });
 
   it("falls back to the light preset without a config file", async () => {
-    await write("link.body.json", {
-      blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }],
-    });
+    await write(
+      "body.link.ts",
+      `export default { blocks: [{ component: "link", title: "Blog", url: "https://b.dev" }] }`,
+    );
 
     const outPath = await build(dir, join(out, "dist"));
     const html = await readFile(outPath, "utf8");
@@ -77,15 +83,19 @@ describe("build", () => {
   });
 
   it("does not write any output file on validation error", async () => {
-    await write("link.body.json", { blocks: [{ component: "link", title: "x", url: "bad" }] });
+    await write(
+      "body.link.ts",
+      `export default { blocks: [{ component: "link", title: "x", url: "bad" }] }`,
+    );
     await expect(build(dir, join(out, "dist"))).rejects.toThrow(/blocks\[0\]\.url/);
     await expect(readFile(join(out, "dist", "index.html"), "utf8")).rejects.toThrow();
   });
 
   it("copies local assets and rewrites references in the output", async () => {
-    await write("link.header.json", {
-      blocks: [{ component: "profile", image: "./avatar.png", name: "Jane" }],
-    });
+    await write(
+      "header.link.ts",
+      `export default { blocks: [{ component: "profile", image: "./avatar.png", name: "Jane" }] }`,
+    );
     await writeFile(join(dir, "avatar.png"), "fake-png-bytes");
 
     const outPath = await build(dir, join(out, "dist"));
@@ -98,9 +108,10 @@ describe("build", () => {
   });
 
   it("fails without writing index.html when a referenced asset is missing", async () => {
-    await write("link.header.json", {
-      blocks: [{ component: "profile", image: "./missing.png", name: "Jane" }],
-    });
+    await write(
+      "header.link.ts",
+      `export default { blocks: [{ component: "profile", image: "./missing.png", name: "Jane" }] }`,
+    );
     await expect(build(dir, join(out, "dist"))).rejects.toThrow(/file not found/);
     await expect(readFile(join(out, "dist", "index.html"), "utf8")).rejects.toThrow();
   });

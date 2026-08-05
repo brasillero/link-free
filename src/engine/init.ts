@@ -1,4 +1,4 @@
-import { access, writeFile } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { LoadError } from "./loadSections.js";
 
@@ -84,6 +84,7 @@ export interface InitResult {
  * unless force is set; package.json/tsconfig.json are never overwritten.
  */
 export async function initProject(dir: string, options: { force?: boolean }): Promise<InitResult> {
+  await mkdir(dir, { recursive: true });
   const configNames = Object.keys(CONFIG_FILES);
 
   const colliding: string[] = [];

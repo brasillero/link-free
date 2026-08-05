@@ -1,0 +1,9 @@
+import type { BodyFile } from "link-free";
+
+export default {
+  blocks: [
+    { component: "link", title: "My blog", url: "https://blog.janedoe.dev", description: "Long-form writing" },
+    { component: "link", title: "Talks", url: "https://janedoe.dev/talks" },
+    { component: "link", title: "Contact", url: "mailto:jane@janedoe.dev" },
+  ],
+} satisfies BodyFile;
