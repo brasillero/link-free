@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initProject } from "../../src/engine/init.js";
+import { loadSections } from "../../src/engine/loadSections.js";
 
 let dir: string;
 
@@ -85,5 +86,15 @@ describe("initProject", () => {
     await expect(initProject(dir, {})).rejects.toThrow(
       /config files already exist: site\.link\.ts, body\.link\.ts/,
     );
+  });
+
+  it("starter configs load and validate through the real engine", async () => {
+    await initProject(dir, {});
+    const sections = await loadSections(dir);
+    expect(sections.site.title).toBe("Your Name — Links");
+    expect(sections.header).toHaveLength(2);
+    expect(sections.body).toHaveLength(1);
+    expect(sections.footer).toHaveLength(1);
+    expect(sections.theme.theme).toBe("light");
   });
 });
