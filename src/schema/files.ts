@@ -27,8 +27,8 @@ export const sectionFileSchema = z.object({
 
 /**
  * Per-section file schemas: richer than sectionFileSchema (which stays loose
- * at runtime so loadSections can emit curated per-block errors). Used for
- * JSON Schema generation and editor documentation.
+ * at runtime so loadSections can emit curated per-block errors). Used to
+ * infer the config types shipped from the package root.
  */
 export const headerFileSchema = z.object({
   blocks: z.array(z.discriminatedUnion("component", [profileBlockSchema, socialsBlockSchema])),
@@ -41,6 +41,10 @@ export const bodyFileSchema = z.object({
 export const footerFileSchema = z.object({
   blocks: z.array(z.discriminatedUnion("component", [textBlockSchema])),
 });
+
+export type HeaderFile = z.infer<typeof headerFileSchema>;
+export type BodyFile = z.infer<typeof bodyFileSchema>;
+export type FooterFile = z.infer<typeof footerFileSchema>;
 
 const colorToken = z.string().min(1).regex(/^[^<]+$/, "must not contain '<'");
 const radiusToken = z.enum(["sm", "md", "lg", "full"]);

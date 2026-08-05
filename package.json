@@ -1,6 +1,6 @@
 {
   "name": "link-free",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tiny link-in-bio static HTML generator - semantic, SEO-first, zero JS",
   "type": "module",
   "license": "MIT",
@@ -20,6 +20,15 @@
   "bin": {
     "link-free": "./dist/cli.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
   "files": [
     "dist"
   ],
@@ -32,7 +41,6 @@
     "typecheck": "pnpm css && tsc --noEmit",
     "test": "pnpm css && vitest run",
     "dev": "pnpm css && vitest",
-    "schemas": "vite-node scripts/generate-schemas.ts",
     "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
@@ -41,10 +49,8 @@
     "tailwindcss": "^4.3.3",
     "tsup": "^8.1.0",
     "typescript": "^5.5.4",
-    "vite-node": "^1.6.1",
     "vitest": "^1.6.0",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.2"
+    "zod": "^3.25.76"
   },
   "dependencies": {
     "jiti": "^2.7.0"
