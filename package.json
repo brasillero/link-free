@@ -38,7 +38,6 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
     "@types/node": "^20.14.0",
-    "jiti": "^2.7.0",
     "tailwindcss": "^4.3.3",
     "tsup": "^8.1.0",
     "typescript": "^5.5.4",
@@ -46,5 +45,8 @@
     "vitest": "^1.6.0",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.25.2"
+  },
+  "dependencies": {
+    "jiti": "^2.7.0"
   }
 }
