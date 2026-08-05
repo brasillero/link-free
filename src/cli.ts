@@ -5,7 +5,7 @@ import { initProject } from "./engine/init.js";
 import { resolveOutDir } from "./outPath.js";
 
 const USAGE =
-  "Usage: link-free <command>\n  link-free build [--dir <path>] [--out <path>]\n  link-free init [--dir <path>] [--force]";
+  "Usage: link-free <command>\n  link-free build [--dir <path>] [--out <path>]  (default output: <dir>/dist)\n  link-free init [--dir <path>] [--force]";
 
 async function main(): Promise<void> {
   let values: { dir: string; out?: string | undefined; help: boolean; force: boolean };
