@@ -113,11 +113,12 @@ export async function loadModule(path: string): Promise<unknown | null> {
   } catch (err) {
     throw new LoadError(`${path}: failed to load — ${(err as Error).message}`);
   }
-  const data = (mod as Record<string, unknown>).default;
-  if (data === undefined) {
+  // jiti's interop exposes a .default getter returning the namespace even when
+  // no default export exists, so undefined-checking does not work; hasOwn does.
+  if (mod === null || typeof mod !== "object" || !Object.hasOwn(mod, "default")) {
     throw new LoadError(`${path}: expected a default export`);
   }
-  return data;
+  return (mod as Record<string, unknown>).default;
 }
 ```
 
