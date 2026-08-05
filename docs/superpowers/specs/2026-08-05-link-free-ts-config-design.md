@@ -39,7 +39,7 @@ export default {
 
 ## 3. Loading
 
-- New dependency: `jiti` (bundled into the CLI via tsup `noExternal`; adds roughly 1 MB to installs).
+- New dependency: `jiti` — the package's **single runtime dependency** (jiti itself is dependency-free; users install exactly one extra package). It is NOT bundled: jiti's TS transformer resolves its own files dynamically, which bundlers cannot convert, so it must load from `node_modules` at runtime.
 - `loadSections` keeps its structure: for each of the five files, load the module's default export via jiti, then run the existing zod validation. A module that throws on load (syntax error, bad import) becomes a `LoadError` naming the file.
 - **Migration guard:** if a directory contains `link.*.json` config files but no `.link.ts` files, the build fails with: `JSON configs are no longer supported as of v0.2.0 — convert them to <section>.link.ts modules`. Exit 1.
 
@@ -48,7 +48,8 @@ export default {
 - tsup builds two entries: `src/cli.ts` (bin) and `src/index.ts` (new, re-exports the config types). `dts` enabled for the index entry.
 - `package.json` gains `exports`: `{ ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } }` (bin wiring unchanged).
 - Version → `0.2.0`.
-- `zod` moves back to runtime dependencies? No: it is bundled, so it stays a devDependency (noExternal already covers it). Only `jiti` is added (also devDep + bundled).
+- `jiti` is a **runtime dependency** (the package's only one; jiti itself is dependency-free). It must NOT be bundled — its TS transformer resolves its own files dynamically at runtime, which bundlers cannot convert. zod stays bundled via `noExternal: ["zod"]`.
+- A dist smoke test (`tests/cli.test.ts`) runs `pnpm build` and executes `dist/cli.js` against a `.link.ts` fixture, catching any future bundling regression of the loader.
 
 ## 5. `init` (framework-style scaffolding)
 

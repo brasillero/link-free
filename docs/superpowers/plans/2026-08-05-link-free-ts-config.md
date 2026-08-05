@@ -406,7 +406,7 @@ export default defineConfig({
   target: "node18",
   clean: true,
   banner: { js: "#!/usr/bin/env node" },
-  noExternal: ["zod", "jiti"],
+  noExternal: ["zod"],
   dts: { entry: ["src/index.ts"] },
 });
 ```
