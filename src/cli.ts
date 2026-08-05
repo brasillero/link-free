@@ -39,10 +39,11 @@ async function main(): Promise<void> {
 
   if (command === "init") {
     try {
-      const created = await initProject(resolve(values.dir), { force: values.force });
-      console.log(`created ${created.length} config files in ${resolve(values.dir)}:`);
-      for (const name of created) console.log(`  ${name}`);
-      console.log("\nedit them, then run: link-free build");
+      const result = await initProject(resolve(values.dir), { force: values.force });
+      console.log(`created ${result.created.length} files:`);
+      for (const name of result.created) console.log(`  ${name}`);
+      for (const name of result.skipped) console.log(`  ${name} (kept existing)`);
+      console.log("\nnext: pnpm install (or npm/yarn install), then pnpm build");
     } catch (err) {
       console.error(`error: ${(err as Error).message}`);
       process.exit(1);
